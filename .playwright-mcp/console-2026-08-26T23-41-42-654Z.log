@@ -1,0 +1,22 @@
+[  103092ms] Error: Base UI error #31; visit https://base-ui.com/production-error?code=31 for the full message.
+    at https://tornearia-castro.vercel.app/_next/static/immutable/chunks/405na9oek6qfe.js:1:12261
+    at https://tornearia-castro.vercel.app/_next/static/immutable/chunks/405na9oek6qfe.js:1:12295
+    at aS (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:79321)
+    at oW (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:97361)
+    at id (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:114544)
+    at sh (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:154687)
+    at https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:154532
+    at sm (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:154540)
+    at sr (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:150454)
+    at sK (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:176369)
+[  187535ms] Error: Base UI error #31; visit https://base-ui.com/production-error?code=31 for the full message.
+    at https://tornearia-castro.vercel.app/_next/static/immutable/chunks/405na9oek6qfe.js:1:12261
+    at https://tornearia-castro.vercel.app/_next/static/immutable/chunks/405na9oek6qfe.js:1:12295
+    at aS (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:79321)
+    at oW (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:97361)
+    at id (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:114544)
+    at sh (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:154687)
+    at https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:154532
+    at sm (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:154540)
+    at sr (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:150454)
+    at sK (https://tornearia-castro.vercel.app/_next/static/immutable/chunks/32sn97g8gqf8u.js:1:176369)

@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -55,10 +56,12 @@ export function Header({
             <span className="hidden max-w-40 truncate text-sm font-medium sm:inline">{userEmail}</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="truncate">{userEmail}</DropdownMenuLabel>
-            <p className="px-2 pb-1.5 text-xs text-muted-foreground">
-              {isAdmin ? "Administrador" : "Consultor"}
-            </p>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="truncate">{userEmail}</DropdownMenuLabel>
+              <p className="px-2 pb-1.5 text-xs text-muted-foreground">
+                {isAdmin ? "Administrador" : "Consultor"}
+              </p>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => logout()}>
               Sair
