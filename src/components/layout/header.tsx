@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { logout } from "@/lib/supabase/actions";
 
 export function Header({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
   return (
@@ -45,7 +46,9 @@ export function Header({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
             <DropdownMenuItem>Perfil</DropdownMenuItem>
             <DropdownMenuItem>Preferências</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">Sair</DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => logout()}>
+              Sair
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

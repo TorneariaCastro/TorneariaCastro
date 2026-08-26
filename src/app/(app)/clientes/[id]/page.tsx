@@ -3,22 +3,24 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Building2, Mail, MapPin, Phone, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
-import { clientesMock } from "@/lib/mock-data/clientes";
-import { ordensServicoMock } from "@/lib/mock-data/ordens-servico";
-import { transacoesMock } from "@/lib/mock-data/transacoes";
+import { getCliente } from "@/lib/data/clientes";
+import { listOrdensServicoPorCliente } from "@/lib/data/ordens-servico";
+import { listTransacoesPorCliente } from "@/lib/data/transacoes";
 import { calcularValorTotal } from "@/lib/types";
-import { formatarData, formatarDocumento, formatarMoeda } from "@/lib/format";
+import { formatarDocumento, formatarMoeda } from "@/lib/format";
 
 export default async function ClienteDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const cliente = clientesMock.find((c) => c.id === id);
+  const cliente = await getCliente(id);
 
   if (!cliente) notFound();
 
-  const ordensDoCliente = ordensServicoMock.filter((os) => os.clienteId === id);
-  const transacoesDoCliente = transacoesMock.filter((t) => t.clienteId === id);
+  const [ordensDoCliente, transacoesDoCliente] = await Promise.all([
+    listOrdensServicoPorCliente(id),
+    listTransacoesPorCliente(id),
+  ]);
+
   const totalFaturado = transacoesDoCliente
     .filter((t) => t.status === "pago")
     .reduce((total, t) => total + t.valor, 0);

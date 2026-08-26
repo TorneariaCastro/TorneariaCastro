@@ -2,7 +2,7 @@
 
 **Descrição:** Sistema interno de gestão da Tornearia Castro (clientes, ordens de serviço, financeiro), hoje um protótipo funcional sem persistência real. Objetivo: virar sistema de produção completo, sem faseamento de escopo (Kleber decidiu incluir tudo na v1).
 **Stack:** GitHub + Supabase + Vercel + Next.js 16 (App Router) + shadcn/ui
-**Última atualização:** 2026-08-26
+**Última atualização:** 2026-08-26 (Fase 01 iniciada — git/GitHub prontos)
 
 ---
 
@@ -19,13 +19,13 @@
 ## Roadmap de Implementação
 
 ### 🔵 FASE 01: FUNDAÇÃO
-**Status:** `⏳ Aguardando`
-**Progresso:** 0/8 tarefas (0%)
+**Status:** `🔄 Em Andamento`
+**Progresso:** 1/8 tarefas (12%)
 **Objetivo:** Sair do "protótipo sem memória" para dados reais, login real e sistema publicado — mesmo que ainda sem NFS-e/pagamento reais.
 **Por que primeiro?** Sem banco de dados e autenticação, tudo que vier depois (NFS-e, pagamento) é decoração em cima de areia.
 
 #### Tarefas:
-- [ ] Inicializar repositório git local + criar repo no GitHub + branches `dev`, `hml`, `main`
+- [x] Inicializar repositório git local + criar repo no GitHub + branches `dev`, `hml`, `main` — repo: https://github.com/TorneariaCastro/tornearia-castro (conta `gh` já ativa era a certa: TorneariaCastro)
 - [ ] Coletar credenciais da conta Vercel separada (Access Token) e da conta Supabase separada (URL, anon key, service role key)
 - [ ] Criar projeto Supabase (conta telascastroclaudia@gmail.com) com schema: `clientes`, `ordens_servico`, `mao_de_obra`, `materiais`, `transacoes`
 - [ ] Configurar RLS: acesso restrito a usuários autenticados (todos com papel administrador — sem diferenciação de permissão nesta versão)
@@ -95,3 +95,4 @@
 | Data | O que foi feito |
 |------|----------------|
 | 2026-08-26 | Shiva conduziu descoberta + MoSCoW (tudo Must Have, sem faseamento de escopo). Hades recebeu a spec, mapeou bloqueios reais do ambiente (sem git, sem GitHub/Supabase MCP, conta Vercel/Supabase da sessão é a pessoal do Kleber, não a de deploy) e criou o roadmap em 4 fases. |
+| 2026-08-26 | Atlas inicializou o git local, renomeou branch padrão para `main`, criou `dev`/`hml`, e publicou o repositório em github.com/TorneariaCastro/tornearia-castro — a conta `gh` já autenticada era a certa, sem precisar pedir nada a Kleber. Fase 01 aguardando credenciais Vercel/Supabase da conta separada. |

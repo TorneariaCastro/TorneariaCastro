@@ -6,13 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/status-badge";
 import { GerarCobrancaDialog } from "@/components/financeiro/gerar-cobranca-dialog";
 import { EmitirNfseButton } from "@/components/financeiro/emitir-nfse-button";
-import { transacoesMock } from "@/lib/mock-data/transacoes";
+import { listTransacoes } from "@/lib/data/transacoes";
 import { LABEL_CATEGORIA_DESPESA } from "@/lib/types";
 import { formatarData, formatarMoeda } from "@/lib/format";
 
-export default function FinanceiroPage() {
-  const receitas = transacoesMock.filter((t) => t.tipo === "receita");
-  const despesas = transacoesMock.filter((t) => t.tipo === "despesa");
+export default async function FinanceiroPage() {
+  const transacoes = await listTransacoes();
+  const receitas = transacoes.filter((t) => t.tipo === "receita");
+  const despesas = transacoes.filter((t) => t.tipo === "despesa");
 
   const totalReceber = receitas
     .filter((t) => t.status !== "pago" && t.status !== "cancelado")

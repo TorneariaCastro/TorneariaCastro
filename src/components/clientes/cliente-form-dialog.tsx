@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { VariantProps } from "class-variance-authority";
@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { TipoPessoa } from "@/lib/types";
+import { criarCliente } from "@/app/(app)/clientes/actions";
 
 interface ClienteFormDialogProps {
   variant?: VariantProps<typeof buttonVariants>["variant"];
@@ -29,19 +30,23 @@ interface ClienteFormDialogProps {
 export function ClienteFormDialog({ variant = "outline", className, children }: ClienteFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa>("juridica");
-  const [nome, setNome] = useState("");
-  const [salvando, setSalvando] = useState(false);
+  const [error, setError] = useState<string>();
+  const [pending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSalvando(true);
-    await new Promise((r) => setTimeout(r, 500));
-    setSalvando(false);
-    setOpen(false);
-    toast.success("Cliente cadastrado", {
-      description: nome ? `${nome} foi adicionado à sua base de clientes.` : undefined,
+  function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      const result = await criarCliente(undefined, formData);
+      if (result.error) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Cliente cadastrado");
+      setError(undefined);
+      setOpen(false);
+      formRef.current?.reset();
     });
-    setNome("");
   }
 
   return (
@@ -55,16 +60,19 @@ export function ClienteFormDialog({ variant = "outline", className, children }: 
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} action={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Novo cliente</DialogTitle>
             <DialogDescription>Cadastre um novo cliente pessoa física ou jurídica.</DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid max-h-[60vh] gap-4 overflow-y-auto py-4 pr-1">
             <div className="grid gap-2">
               <Label>Tipo de pessoa</Label>
-              <Select value={tipoPessoa} onValueChange={(v) => setTipoPessoa(v as TipoPessoa)}>
+              <Select
+                value={tipoPessoa}
+                onValueChange={(v) => setTipoPessoa(v as TipoPessoa)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -73,36 +81,70 @@ export function ClienteFormDialog({ variant = "outline", className, children }: 
                   <SelectItem value="fisica">Pessoa Física</SelectItem>
                 </SelectContent>
               </Select>
+              <input type="hidden" name="tipoPessoa" value={tipoPessoa} />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="nome">{tipoPessoa === "juridica" ? "Razão Social" : "Nome completo"}</Label>
-              <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} required />
+              <Input id="nome" name="nome" required />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="documento">{tipoPessoa === "juridica" ? "CNPJ" : "CPF"}</Label>
-              <Input id="documento" required />
+              <Input id="documento" name="documento" required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" required />
+                <Input id="email" name="email" type="email" required />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="telefone">Telefone</Label>
-                <Input id="telefone" required />
+                <Input id="telefone" name="telefone" required />
               </div>
             </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2 grid gap-2">
+                <Label htmlFor="logradouro">Endereço</Label>
+                <Input id="logradouro" name="logradouro" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="numero">Número</Label>
+                <Input id="numero" name="numero" required />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="bairro">Bairro</Label>
+                <Input id="bairro" name="bairro" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="cidade">Cidade</Label>
+                <Input id="cidade" name="cidade" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="uf">UF</Label>
+                <Input id="uf" name="uf" maxLength={2} required />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="cep">CEP</Label>
+              <Input id="cep" name="cep" required />
+            </div>
           </div>
+
+          {error && <p className="px-1 pb-2 text-sm text-status-danger-foreground">{error}</p>}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={salvando}>
-              {salvando ? "Salvando..." : "Salvar cliente"}
+            <Button type="submit" disabled={pending}>
+              {pending ? "Salvando..." : "Salvar cliente"}
             </Button>
           </DialogFooter>
         </form>
