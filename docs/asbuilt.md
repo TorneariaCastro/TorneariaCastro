@@ -20,14 +20,14 @@
 
 ### 🔵 FASE 01: FUNDAÇÃO
 **Status:** `🔄 Em Andamento`
-**Progresso:** 5/8 tarefas (62%) — os 3 restantes exigem ação de Kleber, não são mais trabalho de código
+**Progresso:** 6/8 tarefas (75%) — falta só o projeto Vercel (bloqueado por permissão) e a criação do usuário de login
 **Objetivo:** Sair do "protótipo sem memória" para dados reais, login real e sistema publicado — mesmo que ainda sem NFS-e/pagamento reais.
 **Por que primeiro?** Sem banco de dados e autenticação, tudo que vier depois (NFS-e, pagamento) é decoração em cima de areia.
 
 #### Tarefas:
 - [x] Inicializar repositório git local + criar repo no GitHub + branches `dev`, `hml`, `main` — repo: https://github.com/TorneariaCastro/tornearia-castro (conta `gh` já ativa era a certa: TorneariaCastro)
 - [x] Coletar credenciais da conta Vercel separada (Access Token) e da conta Supabase separada (URL, anon key, service role key) — recebidas de Kleber
-- [ ] Criar schema no Supabase — SQL pronto em `supabase/migrations/0001_init.sql`, mas **não aplicado ainda**: precisa de um Supabase Access Token (Management API) ou de Kleber rodar o script no SQL Editor do painel
+- [x] Criar schema no Supabase — migration aplicada por Kleber via SQL Editor ("Success. No rows returned"), verificado via REST (`/rest/v1/clientes` responde 200)
 - [x] Configurar RLS no SQL da migration (authenticated = acesso total, anon = nada) — vai valer assim que a migration for aplicada
 - [x] Implementar Supabase Auth (login/logout multiusuário, sem cadastro público) — código pronto, só falta um usuário existir no projeto (Kleber convida via painel) e a migration estar aplicada
 - [x] Substituir mocks por queries reais (Clientes, Ordens de Serviço, Financeiro, Dashboard) — `src/lib/mock-data/*` removido
@@ -35,10 +35,10 @@
 - [x] Design tokens mantidos como estavam (sem redesign, conforme decisão da Shiva)
 
 **Bloqueios ativos desta fase:**
-1. Migration SQL não aplicada no banco (falta Access Token de Management API ou Kleber rodar manualmente)
-2. Projeto Vercel não criado/ligado (falta confirmação de Kleber para o comando `vercel link`)
+1. Projeto Vercel não criado/ligado (falta confirmação de Kleber para o comando `vercel link`)
+2. Nenhum usuário criado no Supabase Auth ainda — login não tem quem entre até Kleber criar o próprio usuário em Authentication → Users
 
-Sem esses dois, o app está com código pronto e testado (`npm run build` ✅, proxy de auth ✅ testado localmente) mas ainda não está rodando com dados reais em produção.
+Migration aplicada e verificada em 2026-08-26. Código pronto e testado (`npm run build` ✅, proxy de auth ✅ testado localmente) — falta publicar e ter um usuário.
 
 **Testável:** Login funcionando, CRUD real de Clientes/OS/Financeiro persistindo entre sessões, sistema acessível via URL da Vercel.
 **Notas:** NFS-e e pagamento continuam mockados nesta fase — é intencional, entram nas fases seguintes.
