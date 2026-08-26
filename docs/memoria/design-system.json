@@ -1,0 +1,27 @@
+{
+  "status": "já implementado no código — este arquivo documenta o que existe, não propõe um novo",
+  "sourceOfTruth": "src/app/globals.css",
+  "theme": {
+    "defaultMode": "dark",
+    "conceito": "industrial tech"
+  },
+  "colors": {
+    "primary": { "light": "oklch(0.511 0.262 276.966)", "dark": "oklch(0.652 0.196 277.5)" },
+    "background": { "light": "oklch(1 0 0)", "dark": "oklch(0.141 0.005 285.823)" },
+    "foreground": { "light": "oklch(0.141 0.005 285.823)", "dark": "oklch(0.94 0.002 286)" },
+    "status": {
+      "success": { "light": "oklch(0.396 0.09 163.2)", "dark": "oklch(0.83 0.16 162)" },
+      "warning": { "light": "oklch(0.47 0.13 70)", "dark": "oklch(0.84 0.15 82)" },
+      "danger": { "light": "oklch(0.5 0.19 27)", "dark": "oklch(0.78 0.15 25)" },
+      "info": { "light": "oklch(0.45 0.13 230)", "dark": "oklch(0.8 0.11 220)" }
+    }
+  },
+  "typography": {
+    "sans": "Geist",
+    "mono": "Geist Mono"
+  },
+  "spacing": {
+    "radius": "0.75rem (base, escalado via --radius-sm..--radius-4xl)"
+  },
+  "nota": "Kleber priorizou função sobre forma nesta fase — Shiva não propôs revisão visual. Se o UAU do design entrar em pauta depois, revisitar aqui."
+}
