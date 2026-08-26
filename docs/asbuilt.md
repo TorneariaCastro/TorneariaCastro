@@ -40,7 +40,11 @@
 
 Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmail.com` convidado via `/auth/v1/invite` (aguardando reenvio do convite agora que existe uma URL de produção real para o link apontar). Build ✅, proxy de auth ✅ testado local e remotamente.
 
-**Peça faltante encontrada e corrigida:** não existia tela de "definir senha" pra aceitar convite — criada em `src/app/(auth)/definir-senha/page.tsx` (commit `f78cdde`), mas **ainda não redeployada** (segundo `vercel deploy` bloqueado pelo classificador de permissão de novo — aprovação não persiste entre chamadas). Falta também configurar em Supabase (Authentication → URL Configuration) a Site URL / Redirect URLs para aceitar `https://tornearia-castro.vercel.app/definir-senha` — chave de serviço não dá acesso a essa configuração.
+**Peça faltante encontrada e corrigida:** não existia tela de "definir senha" pra aceitar convite — criada em `src/app/(auth)/definir-senha/page.tsx` (commit `f78cdde`). Supabase URL Configuration já ajustado por Kleber.
+
+**Repositório corrigido em 2026-08-26:** o Atlas tinha criado `TorneariaCastro/tornearia-castro` (nome errado, escolhido automaticamente). O repositório correto é `TorneariaCastro/TorneariaCastro` (já existia, vazio). Todo histórico (`main`/`dev`/`hml` + tags) migrado para lá via `git remote set-url` + push; projeto Vercel reconectado ao repo certo. **O repositório antigo (`tornearia-castro`, minúsculo) ainda existe no GitHub e não foi apagado** — aguardando confirmação de Kleber pra deletar.
+
+🔴 **Bloqueio real de deploy automático (ainda não resolvido, independente da correção do repo):** Vercel bloqueia deployments porque o autor dos commits (`kleberdebh7`) não tem acesso de colaborador ao projeto na Vercel, e o plano Hobby não permite colaboração em repositório privado. Duas opções apresentadas a Kleber: (1) tornar o repositório público (grátis) ou (2) upgrade pro plano Pro (US$20/mês). Aguardando decisão — nenhuma ação tomada sem aprovação, conforme Protocolo de Consciência Orçamentária.
 
 **Testável:** Login funcionando, CRUD real de Clientes/OS/Financeiro persistindo entre sessões, sistema acessível via URL da Vercel.
 **Notas:** NFS-e e pagamento continuam mockados nesta fase — é intencional, entram nas fases seguintes.
