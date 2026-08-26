@@ -8,12 +8,14 @@ import { listClientes } from "@/lib/data/clientes";
 import { listOrdensServico } from "@/lib/data/ordens-servico";
 import { listTransacoes } from "@/lib/data/transacoes";
 import { formatarMoeda } from "@/lib/format";
+import { getSessao } from "@/lib/auth/session";
 
 export default async function DashboardPage() {
-  const [clientes, ordensServico, transacoes] = await Promise.all([
+  const [clientes, ordensServico, transacoes, { isAdmin }] = await Promise.all([
     listClientes(),
     listOrdensServico(),
     listTransacoes(),
+    getSessao(),
   ]);
 
   const kpis = getKpis(clientes, transacoes);
@@ -27,7 +29,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard Executivo</h1>
           <p className="text-sm text-muted-foreground">Visão geral da operação da oficina</p>
         </div>
-        <QuickActions clientes={clientes} />
+        {isAdmin && <QuickActions clientes={clientes} />}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

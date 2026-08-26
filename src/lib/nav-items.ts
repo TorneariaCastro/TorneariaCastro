@@ -4,6 +4,7 @@ export interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
+  adminOnly?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -12,5 +13,5 @@ export const navItems: NavItem[] = [
   { href: "/ordens-servico", label: "Ordens de Serviço", icon: ClipboardList },
   { href: "/notas-fiscais", label: "Notas Fiscais", icon: FileText },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
-  { href: "/usuarios", label: "Usuários", icon: UserCog },
+  { href: "/usuarios", label: "Usuários", icon: UserCog, adminOnly: true },
 ];

@@ -10,9 +10,14 @@ import { listTransacoes } from "@/lib/data/transacoes";
 import { listNotasFiscais } from "@/lib/data/notas-fiscais";
 import { LABEL_CATEGORIA_DESPESA } from "@/lib/types";
 import { formatarData, formatarMoeda } from "@/lib/format";
+import { getSessao } from "@/lib/auth/session";
 
 export default async function FinanceiroPage() {
-  const [transacoes, notasFiscais] = await Promise.all([listTransacoes(), listNotasFiscais()]);
+  const [transacoes, notasFiscais, { isAdmin }] = await Promise.all([
+    listTransacoes(),
+    listNotasFiscais(),
+    getSessao(),
+  ]);
   const numeroNfsePorOrdemServico = new Map(notasFiscais.map((n) => [n.ordemServicoId, n.numero]));
   const receitas = transacoes.filter((t) => t.tipo === "receita");
   const despesas = transacoes.filter((t) => t.tipo === "despesa");
@@ -85,7 +90,7 @@ export default async function FinanceiroPage() {
                     <TableHead className="hidden md:table-cell">Vencimento</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    {isAdmin && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,20 +107,22 @@ export default async function FinanceiroPage() {
                         <StatusBadge status={t.status} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{formatarMoeda(t.valor)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          {t.status === "pago" ? (
-                            <EmitirNfseButton
-                              transacao={t}
-                              numeroExistente={
-                                t.ordemServicoId ? numeroNfsePorOrdemServico.get(t.ordemServicoId) : undefined
-                              }
-                            />
-                          ) : (
-                            <GerarCobrancaDialog transacao={t} />
-                          )}
-                        </div>
-                      </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            {t.status === "pago" ? (
+                              <EmitirNfseButton
+                                transacao={t}
+                                numeroExistente={
+                                  t.ordemServicoId ? numeroNfsePorOrdemServico.get(t.ordemServicoId) : undefined
+                                }
+                              />
+                            ) : (
+                              <GerarCobrancaDialog transacao={t} />
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

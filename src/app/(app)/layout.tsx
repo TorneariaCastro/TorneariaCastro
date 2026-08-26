@@ -1,16 +1,13 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { createClient } from "@/lib/supabase/server";
+import { getSessao } from "@/lib/auth/session";
 
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, isAdmin } = await getSessao();
 
   if (!user) {
     redirect("/login");
   }
 
-  return <AppShell>{children}</AppShell>;
+  return <AppShell isAdmin={isAdmin}>{children}</AppShell>;
 }

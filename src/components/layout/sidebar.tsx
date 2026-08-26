@@ -13,10 +13,12 @@ interface SidebarProps {
   onToggle: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  isAdmin: boolean;
 }
 
-export function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile, isAdmin }: SidebarProps) {
   const pathname = usePathname();
+  const itensVisiveis = navItems.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <>
@@ -49,7 +51,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }: Side
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navItems.map((item) => {
+          {itensVisiveis.map((item) => {
             const active = pathname.startsWith(item.href);
             const link = (
               <Link

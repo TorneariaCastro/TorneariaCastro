@@ -6,9 +6,14 @@ import { listClientes } from "@/lib/data/clientes";
 import { listOrdensServico } from "@/lib/data/ordens-servico";
 import { PIPELINE_ORDEM_SERVICO, calcularValorTotal } from "@/lib/types";
 import { formatarData, formatarMoeda } from "@/lib/format";
+import { getSessao } from "@/lib/auth/session";
 
 export default async function OrdensServicoPage() {
-  const [ordensServico, clientes] = await Promise.all([listOrdensServico(), listClientes()]);
+  const [ordensServico, clientes, { isAdmin }] = await Promise.all([
+    listOrdensServico(),
+    listClientes(),
+    getSessao(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -17,7 +22,7 @@ export default async function OrdensServicoPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Ordens de Serviço</h1>
           <p className="text-sm text-muted-foreground">{ordensServico.length} ordens registradas</p>
         </div>
-        <OrdemServicoFormDialog modo="os" clientes={clientes} />
+        {isAdmin && <OrdemServicoFormDialog modo="os" clientes={clientes} />}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

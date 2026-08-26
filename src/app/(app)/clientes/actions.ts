@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getSessao } from "@/lib/auth/session";
 import type { TipoPessoa } from "@/lib/types";
 
 export interface CriarClienteState {
@@ -9,6 +10,11 @@ export interface CriarClienteState {
 }
 
 export async function criarCliente(_prevState: CriarClienteState | undefined, formData: FormData): Promise<CriarClienteState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) {
+    return { error: "Consultores não podem cadastrar clientes." };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase.from("clientes").insert({

@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { ClienteFormDialog } from "@/components/clientes/cliente-form-dialog";
 import { listClientes } from "@/lib/data/clientes";
 import { formatarDocumento } from "@/lib/format";
+import { getSessao } from "@/lib/auth/session";
 
 export default async function ClientesPage() {
-  const clientes = await listClientes();
+  const [clientes, { isAdmin }] = await Promise.all([listClientes(), getSessao()]);
 
   return (
     <div className="space-y-6">
@@ -17,7 +18,7 @@ export default async function ClientesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
           <p className="text-sm text-muted-foreground">{clientes.length} clientes cadastrados</p>
         </div>
-        <ClienteFormDialog />
+        {isAdmin && <ClienteFormDialog />}
       </div>
 
       <Card className="py-0">

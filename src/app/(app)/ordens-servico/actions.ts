@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getSessao } from "@/lib/auth/session";
 
 export interface CriarOrdemServicoState {
   error?: string;
@@ -21,6 +22,11 @@ export async function criarOrdemServico(
   _prevState: CriarOrdemServicoState | undefined,
   formData: FormData,
 ): Promise<CriarOrdemServicoState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) {
+    return { error: "Consultores não podem criar ordens de serviço." };
+  }
+
   const supabase = await createClient();
 
   const clienteId = String(formData.get("clienteId") ?? "");

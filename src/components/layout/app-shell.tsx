@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, isAdmin }: { children: React.ReactNode; isAdmin: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -16,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onToggle={() => setCollapsed((v) => !v)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        isAdmin={isAdmin}
       />
 
       <div

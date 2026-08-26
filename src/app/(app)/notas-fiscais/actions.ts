@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getSessao } from "@/lib/auth/session";
 import { nfseService } from "@/lib/services/nfse/mock-nfse-service";
 
 export interface EmitirNfseInput {
@@ -14,6 +15,11 @@ export interface EmitirNfseInput {
 }
 
 export async function emitirNfse(input: EmitirNfseInput) {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) {
+    throw new Error("Consultores não podem emitir notas fiscais.");
+  }
+
   const supabase = await createClient();
 
   const resultado = await nfseService.emitir(input);
