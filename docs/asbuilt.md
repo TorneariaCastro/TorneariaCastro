@@ -29,7 +29,7 @@
 - [x] Coletar credenciais da conta Vercel separada (Access Token) e da conta Supabase separada (URL, anon key, service role key) — recebidas de Kleber
 - [x] Criar schema no Supabase — migration aplicada por Kleber via SQL Editor ("Success. No rows returned"), verificado via REST (`/rest/v1/clientes` responde 200)
 - [x] Configurar RLS no SQL da migration (authenticated = acesso total, anon = nada) — vai valer assim que a migration for aplicada
-- [x] Implementar Supabase Auth (login/logout multiusuário, sem cadastro público) — funcional; convite para `telascastroclaudia@gmail.com` foi criado e depois removido a pedido de Kleber (não é o e-mail que ele quer usar para logar) — aguardando o e-mail correto
+- [x] Implementar Supabase Auth (login/logout multiusuário, sem cadastro público) — funcional; usuário `eusoukleberpereira@gmail.com` convidado (convite anterior para `telascastroclaudia@gmail.com` foi removido a pedido de Kleber)
 - [x] Substituir mocks por queries reais (Clientes, Ordens de Serviço, Financeiro, Dashboard) — `src/lib/mock-data/*` removido
 - [ ] Criar projeto Vercel ligado ao repo GitHub — **bloqueado**: `vercel link` foi negado pelo classificador de permissão desta sessão, aguardando confirmação de Kleber
 - [x] Design tokens mantidos como estavam (sem redesign, conforme decisão da Shiva)
