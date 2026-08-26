@@ -40,6 +40,8 @@
 
 Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmail.com` convidado via `/auth/v1/invite` (aguardando reenvio do convite agora que existe uma URL de produção real para o link apontar). Build ✅, proxy de auth ✅ testado local e remotamente.
 
+**Peça faltante encontrada e corrigida:** não existia tela de "definir senha" pra aceitar convite — criada em `src/app/(auth)/definir-senha/page.tsx` (commit `f78cdde`), mas **ainda não redeployada** (segundo `vercel deploy` bloqueado pelo classificador de permissão de novo — aprovação não persiste entre chamadas). Falta também configurar em Supabase (Authentication → URL Configuration) a Site URL / Redirect URLs para aceitar `https://tornearia-castro.vercel.app/definir-senha` — chave de serviço não dá acesso a essa configuração.
+
 **Testável:** Login funcionando, CRUD real de Clientes/OS/Financeiro persistindo entre sessões, sistema acessível via URL da Vercel.
 **Notas:** NFS-e e pagamento continuam mockados nesta fase — é intencional, entram nas fases seguintes.
 **Último trabalho:** Ainda não iniciado.
