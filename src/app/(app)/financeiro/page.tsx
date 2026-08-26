@@ -7,11 +7,13 @@ import { StatusBadge } from "@/components/status-badge";
 import { GerarCobrancaDialog } from "@/components/financeiro/gerar-cobranca-dialog";
 import { EmitirNfseButton } from "@/components/financeiro/emitir-nfse-button";
 import { listTransacoes } from "@/lib/data/transacoes";
+import { listNotasFiscais } from "@/lib/data/notas-fiscais";
 import { LABEL_CATEGORIA_DESPESA } from "@/lib/types";
 import { formatarData, formatarMoeda } from "@/lib/format";
 
 export default async function FinanceiroPage() {
-  const transacoes = await listTransacoes();
+  const [transacoes, notasFiscais] = await Promise.all([listTransacoes(), listNotasFiscais()]);
+  const numeroNfsePorOrdemServico = new Map(notasFiscais.map((n) => [n.ordemServicoId, n.numero]));
   const receitas = transacoes.filter((t) => t.tipo === "receita");
   const despesas = transacoes.filter((t) => t.tipo === "despesa");
 
@@ -103,7 +105,12 @@ export default async function FinanceiroPage() {
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
                           {t.status === "pago" ? (
-                            <EmitirNfseButton transacao={t} />
+                            <EmitirNfseButton
+                              transacao={t}
+                              numeroExistente={
+                                t.ordemServicoId ? numeroNfsePorOrdemServico.get(t.ordemServicoId) : undefined
+                              }
+                            />
                           ) : (
                             <GerarCobrancaDialog transacao={t} />
                           )}

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import type { StatusOrdemServico, StatusTransacao } from "@/lib/types";
+import type { StatusNfse, StatusOrdemServico, StatusTransacao } from "@/lib/types";
 
-type StatusConhecido = StatusOrdemServico | StatusTransacao;
+type StatusConhecido = StatusOrdemServico | StatusTransacao | StatusNfse;
 
 const CONFIG: Record<StatusConhecido, { label: string; className: string }> = {
   rascunho: { label: "Rascunho", className: "bg-muted text-muted-foreground" },
@@ -13,6 +13,11 @@ const CONFIG: Record<StatusConhecido, { label: string; className: string }> = {
   pendente: { label: "Pendente", className: "bg-status-warning text-status-warning-foreground" },
   pago: { label: "Pago", className: "bg-status-success text-status-success-foreground" },
   atrasado: { label: "Atrasado", className: "bg-status-danger text-status-danger-foreground" },
+  nao_emitida: { label: "Não Emitida", className: "bg-muted text-muted-foreground" },
+  processando: { label: "Processando", className: "bg-status-info text-status-info-foreground" },
+  emitida: { label: "Emitida", className: "bg-status-success text-status-success-foreground" },
+  erro: { label: "Erro", className: "bg-status-danger text-status-danger-foreground" },
+  cancelada: { label: "Cancelada", className: "bg-status-danger text-status-danger-foreground" },
 };
 
 export function StatusBadge({ status, className }: { status: StatusConhecido; className?: string }) {

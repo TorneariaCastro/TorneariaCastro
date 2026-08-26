@@ -4,20 +4,31 @@ import { useState } from "react";
 import { FileCheck2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { nfseService } from "@/lib/services/nfse/mock-nfse-service";
+import { emitirNfse } from "@/app/(app)/notas-fiscais/actions";
 import type { TransacaoFinanceira } from "@/lib/types";
 
-export function EmitirNfseButton({ transacao }: { transacao: TransacaoFinanceira }) {
+export function EmitirNfseButton({
+  transacao,
+  numeroExistente,
+}: {
+  transacao: TransacaoFinanceira;
+  numeroExistente?: string;
+}) {
   const [emitindo, setEmitindo] = useState(false);
-  const [numero, setNumero] = useState<string | null>(null);
+  const [numero, setNumero] = useState<string | null>(numeroExistente ?? null);
 
   async function handleEmitir() {
+    if (!transacao.ordemServicoId) {
+      toast.error("Essa transação não está ligada a uma ordem de serviço.");
+      return;
+    }
+
     setEmitindo(true);
     try {
-      const resultado = await nfseService.emitir({
-        ordemServicoId: transacao.ordemServicoId ?? transacao.id,
-        clienteDocumento: "",
+      const resultado = await emitirNfse({
+        ordemServicoId: transacao.ordemServicoId,
         clienteNome: transacao.clienteNome ?? "Cliente",
+        clienteDocumento: "",
         valorServico: transacao.valor,
         discriminacaoServico: transacao.descricao,
         aliquotaIss: 0.05,
