@@ -5,7 +5,15 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 
-export function AppShell({ children, isAdmin }: { children: React.ReactNode; isAdmin: boolean }) {
+export function AppShell({
+  children,
+  isAdmin,
+  userEmail,
+}: {
+  children: React.ReactNode;
+  isAdmin: boolean;
+  userEmail: string;
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -25,7 +33,7 @@ export function AppShell({ children, isAdmin }: { children: React.ReactNode; isA
           collapsed ? "md:ml-[76px]" : "md:ml-64",
         )}
       >
-        <Header onOpenMobileMenu={() => setMobileOpen(true)} />
+        <Header onOpenMobileMenu={() => setMobileOpen(true)} userEmail={userEmail} isAdmin={isAdmin} />
         <main className="flex-1 p-4 md:p-6 lg:p-8">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>

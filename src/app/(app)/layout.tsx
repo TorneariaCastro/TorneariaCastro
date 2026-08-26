@@ -9,5 +9,9 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     redirect("/login");
   }
 
-  return <AppShell isAdmin={isAdmin}>{children}</AppShell>;
+  return (
+    <AppShell isAdmin={isAdmin} userEmail={user.email ?? ""}>
+      {children}
+    </AppShell>
+  );
 }

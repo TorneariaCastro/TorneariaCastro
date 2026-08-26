@@ -16,7 +16,19 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { logout } from "@/lib/supabase/actions";
 
-export function Header({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
+function iniciais(email: string): string {
+  return email.slice(0, 2).toUpperCase();
+}
+
+export function Header({
+  onOpenMobileMenu,
+  userEmail,
+  isAdmin,
+}: {
+  onOpenMobileMenu: () => void;
+  userEmail: string;
+  isAdmin: boolean;
+}) {
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md md:px-6">
       <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenMobileMenu} aria-label="Abrir menu">
@@ -36,15 +48,17 @@ export function Header({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
         <DropdownMenu>
           <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost" }), "gap-2 pr-2 pl-1.5")}>
             <Avatar className="size-7">
-              <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">KC</AvatarFallback>
+              <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                {iniciais(userEmail)}
+              </AvatarFallback>
             </Avatar>
-            <span className="hidden text-sm font-medium sm:inline">Kleber Castro</span>
+            <span className="hidden max-w-40 truncate text-sm font-medium sm:inline">{userEmail}</span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Minha conta</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Preferências</DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="truncate">{userEmail}</DropdownMenuLabel>
+            <p className="px-2 pb-1.5 text-xs text-muted-foreground">
+              {isAdmin ? "Administrador" : "Consultor"}
+            </p>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => logout()}>
               Sair
