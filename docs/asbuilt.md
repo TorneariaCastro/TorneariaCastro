@@ -50,6 +50,8 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 
 **Repositório errado apagado por Kleber em 2026-08-26** (`TorneariaCastro/tornearia-castro`, minúsculo) — confirmado via `gh repo view` (não existe mais). Único repositório ativo agora: `TorneariaCastro/TorneariaCastro`.
 
+**Login de Kleber criado e testado em 2026-08-26:** senha definida via Admin API a pedido dele (`eusoukleberpereira@gmail.com`), autenticação confirmada direto contra a API do Supabase (token emitido com sucesso). Fase 01 encerrada de fato — sistema em produção, com dados reais e login funcional de ponta a ponta.
+
 **Testável:** Login funcionando, CRUD real de Clientes/OS/Financeiro persistindo entre sessões, sistema acessível via URL da Vercel.
 **Notas:** NFS-e e pagamento continuam mockados nesta fase — é intencional, entram nas fases seguintes.
 **Último trabalho:** Ainda não iniciado.
