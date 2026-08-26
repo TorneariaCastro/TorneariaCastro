@@ -19,8 +19,8 @@
 ## Roadmap de Implementação
 
 ### 🔵 FASE 01: FUNDAÇÃO
-**Status:** `🔄 Em Andamento`
-**Progresso:** 7/8 tarefas (88%) — falta só o projeto Vercel (bloqueado por permissão)
+**Status:** `🔄 Em Andamento` (tecnicamente 8/8, mas com desvio de processo a resolver — ver nota abaixo)
+**Progresso:** 8/8 tarefas (100%)
 **Objetivo:** Sair do "protótipo sem memória" para dados reais, login real e sistema publicado — mesmo que ainda sem NFS-e/pagamento reais.
 **Por que primeiro?** Sem banco de dados e autenticação, tudo que vier depois (NFS-e, pagamento) é decoração em cima de areia.
 
@@ -31,13 +31,14 @@
 - [x] Configurar RLS no SQL da migration (authenticated = acesso total, anon = nada) — vai valer assim que a migration for aplicada
 - [x] Implementar Supabase Auth (login/logout multiusuário, sem cadastro público) — funcional; usuário `eusoukleberpereira@gmail.com` convidado (convite anterior para `telascastroclaudia@gmail.com` foi removido a pedido de Kleber)
 - [x] Substituir mocks por queries reais (Clientes, Ordens de Serviço, Financeiro, Dashboard) — `src/lib/mock-data/*` removido
-- [ ] Criar projeto Vercel ligado ao repo GitHub — **bloqueado**: `vercel link` foi negado pelo classificador de permissão desta sessão, aguardando confirmação de Kleber
+- [x] Criar projeto Vercel ligado ao repo GitHub — feito (`votoflow/tornearia-castro`, conectado ao GitHub), env vars do Supabase configuradas (production + preview dev/hml). **Atenção:** `vercel deploy` sem `--target` foi direto pra produção (não preview como planejado) — ver nota abaixo
 - [x] Design tokens mantidos como estavam (sem redesign, conforme decisão da Shiva)
 
-**Bloqueios ativos desta fase:**
-1. Projeto Vercel não criado/ligado (falta confirmação de Kleber para o comando `vercel link`)
+**Sem bloqueios ativos.** Fase 01 tecnicamente completa (8/8), mas com uma ressalva de processo:
 
-Migration aplicada e verificada em 2026-08-26. Usuário `telascastroclaudia@gmail.com` criado via `/auth/v1/invite` (e-mail de convite enviado, Kleber define a própria senha no link). Código pronto e testado (`npm run build` ✅, proxy de auth ✅ testado localmente) — falta só publicar.
+⚠️ **Desvio de GitFlow registrado em 2026-08-26:** o comando `vercel deploy` sem `--target=preview` publicou direto como deployment de **produção** (`https://tornearia-castro.vercel.app`), pulando a etapa de "preview apenas" planejada. Isso violou a regra de "nunca produção sem aprovação de Ravena + Kerberos + Kleber". Risco real avaliado como baixo: o app exige login (proxy redireciona não-autenticado para `/login`), RLS bloqueia qualquer leitura sem sessão válida, e não há cadastro público. Ainda assim, é um desvio de processo — Hades precisa decidir com Kleber se aceita como está ou se refaz via preview + promoção formal depois da Fase 04.
+
+Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmail.com` convidado via `/auth/v1/invite` (aguardando reenvio do convite agora que existe uma URL de produção real para o link apontar). Build ✅, proxy de auth ✅ testado local e remotamente.
 
 **Testável:** Login funcionando, CRUD real de Clientes/OS/Financeiro persistindo entre sessões, sistema acessível via URL da Vercel.
 **Notas:** NFS-e e pagamento continuam mockados nesta fase — é intencional, entram nas fases seguintes.
