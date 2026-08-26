@@ -48,7 +48,7 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 
 **E-mail de acesso reenviado:** o primeiro convite (`/auth/v1/invite`) já tinha criado o usuário `eusoukleberpereira@gmail.com`, então o reenvio precisou ser via `/auth/v1/recover` (link de recuperação de senha, mesmo efeito) apontando pra `https://tornearia-castro.vercel.app/definir-senha`. Aguardando Kleber clicar e confirmar que consegue entrar.
 
-**Pendente:** decidir o que fazer com o repositório antigo `TorneariaCastro/tornearia-castro` (vazio, órfão) — apagar ou deixar como está.
+**Repositório errado apagado por Kleber em 2026-08-26** (`TorneariaCastro/tornearia-castro`, minúsculo) — confirmado via `gh repo view` (não existe mais). Único repositório ativo agora: `TorneariaCastro/TorneariaCastro`.
 
 **Testável:** Login funcionando, CRUD real de Clientes/OS/Financeiro persistindo entre sessões, sistema acessível via URL da Vercel.
 **Notas:** NFS-e e pagamento continuam mockados nesta fase — é intencional, entram nas fases seguintes.
