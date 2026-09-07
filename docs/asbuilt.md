@@ -65,8 +65,8 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟠 FASE 02: NFS-E REAL (Belo Horizonte - MG)
-**Status:** `🔄 Em Andamento` (Atlas iniciou execução — bloqueado em 2 pontos, ver abaixo)
-**Progresso:** 3/8 tarefas concluídas, 2 parciais (37%)
+**Status:** `🔄 Em Andamento` (Atlas iniciou execução — falta só 1 bloqueio, ver abaixo)
+**Progresso:** 4/8 tarefas concluídas, 2 parciais (50%)
 **Objetivo:** Substituir `mock-nfse-service.ts` por integração real, direta, com o webservice BHISS Digital (Prefeitura de BH) — sem provedor intermediário (decisão de Kleber, validada com a Shiva em 2026-09-07, ver `docs/memoria/integracao-nfse-bh.md`).
 **Por que agora?** Kleber classificou como "o principal" — mais urgente que pagamento.
 **Por que sem provedor?** Zero custo recorrente — mas em troca o Atlas constrói e mantém SOAP+XMLDSig+mTLS na mão. Kryptonita do Hades é dinheiro jogado fora, então essa decisão já nasce com minha bênção — só não finge que é simples.
@@ -78,7 +78,7 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 - [ ] 2. Pedir a Kleber (uma vez): Inscrição Municipal + arquivo `.pfx` do certificado + senha do certificado — **aguardando Kleber enviar**
 - [~] 3. Guardar credenciais como segredo — placeholders já criados em `.env.local` (`NFSE_BH_INSCRICAO_MUNICIPAL`, `NFSE_BH_CERTIFICADO_PFX_BASE64`, `NFSE_BH_CERTIFICADO_SENHA`, `NFSE_BH_WSDL_URL` já apontando para homologação); valores reais pendentes da tarefa 2
 - [x] 4. Dependências instaladas: `xml-crypto`, `node-forge`, `fast-xml-parser`, `@types/node-forge` (commit `b6c78f2`)
-- [x] 5. Migration `supabase/migrations/0003_nfse_rps_sequencial.sql` criada (sequence de RPS + colunas de controle + RPC `nextval_nfse_rps_sequencial`) — **arquivo criado mas NÃO aplicada no banco**: sem Supabase MCP nem CLI linkado nesta sessão, mesmo fluxo das migrations 0001/0002 (Kleber aplica via SQL Editor)
+- [x] 5. Migration `supabase/migrations/0003_nfse_rps_sequencial.sql` — criada e **aplicada por Kleber via SQL Editor em 2026-09-07**; verificado via chamada real ao RPC `nextval_nfse_rps_sequencial` (HTTP 200, retornou `1`) — confirmado que sequence, colunas e função existem no banco
 - [x] 6. `BhissNfseService` implementado em `src/lib/services/nfse/bhiss-nfse-service.ts` — **import da Server Action deliberadamente NÃO trocado ainda** (`notas-fiscais/actions.ts` continua no mock) para não quebrar a emissão em produção antes de ter certificado real e teste em homologação
 - [ ] 7. Testar em homologação — bloqueado até tarefas 2/3 e migration aplicada
 - [ ] 8. Este relatório cumpre parcialmente — retomar ao concluir 7
