@@ -2,7 +2,7 @@
 
 **Descrição:** Sistema interno de gestão da Tornearia Castro (clientes, ordens de serviço, financeiro), hoje um protótipo funcional sem persistência real. Objetivo: virar sistema de produção completo, sem faseamento de escopo (Kleber decidiu incluir tudo na v1).
 **Stack:** GitHub + Supabase + Vercel + Next.js 16 (App Router) + shadcn/ui
-**Última atualização:** 2026-08-26 (Fase 01 iniciada — git/GitHub prontos)
+**Última atualização:** 2026-09-07 (Fase 01 encerrada; Fase 02 — NFS-e real BH — planejada pelo Hades e pronta pro Atlas)
 
 ---
 
@@ -65,18 +65,26 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟠 FASE 02: NFS-E REAL (Belo Horizonte - MG)
-**Status:** `⏳ Aguardando`
-**Progresso:** 0/3 tarefas (0%)
-**Objetivo:** Substituir `mock-nfse-service.ts` por integração real com o webservice de NFS-e da prefeitura de Belo Horizonte.
+**Status:** `🔄 Em Andamento` (spec validada pela Shiva, plano técnico criado pelo Hades — aguardando execução do Atlas)
+**Progresso:** 0/8 tarefas (0%)
+**Objetivo:** Substituir `mock-nfse-service.ts` por integração real, direta, com o webservice BHISS Digital (Prefeitura de BH) — sem provedor intermediário (decisão de Kleber, validada com a Shiva em 2026-09-07, ver `docs/memoria/integracao-nfse-bh.md`).
 **Por que agora?** Kleber classificou como "o principal" — mais urgente que pagamento.
+**Por que sem provedor?** Zero custo recorrente — mas em troca o Atlas constrói e mantém SOAP+XMLDSig+mTLS na mão. Kryptonita do Hades é dinheiro jogado fora, então essa decisão já nasce com minha bênção — só não finge que é simples.
+
+**Pré-requisitos já confirmados por Kleber:** certificado digital e-CNPJ (A1, `.pfx`) e cadastro ativo de contribuinte do ISS em BH.
 
 #### Tarefas:
-- [ ] Pesquisar/confirmar o webservice de NFS-e usado por Belo Horizonte-MG e seus requisitos (certificado digital A1, credenciamento, etc.)
-- [ ] Implementar `NfseService` real respeitando a interface já existente em `src/lib/services/nfse/types.ts`
-- [ ] Testar emissão em ambiente de homologação antes de ligar em produção
+- [ ] 1. Confirmar documentação técnica vigente (manual de integração + XSD + versão do layout ABRASF) direto em bhissdigital.pbh.gov.br — a versão que encontrei em pesquisa é de 2009, não confiar nela sem checar se foi substituída
+- [ ] 2. Pedir a Kleber (uma vez): Inscrição Municipal + arquivo `.pfx` do certificado + senha do certificado
+- [ ] 3. Guardar essas credenciais como segredo (env vars, nunca commitadas; nunca `NEXT_PUBLIC_*`)
+- [ ] 4. Instalar dependências de SOAP + assinatura XML + extração de certificado
+- [ ] 5. Criar controle de numeração sequencial de RPS (migration nova) — sem furos, sem repetição, mesmo com emissões concorrentes
+- [ ] 6. Implementar `BhissNfseService implements NfseService` e trocar o import na Server Action de emissão
+- [ ] 7. Testar emissão/consulta/cancelamento em **homologação** (nunca produção sem aprovação de Kleber)
+- [ ] 8. Reportar a Hades com Output Contract
 
-**Testável:** Emitir uma NFS-e de teste com sucesso a partir de uma transação paga.
-**Notas:** Pode exigir custo (certificado digital, taxa de credenciamento) — segue Protocolo de Consciência Orçamentária: cotar e apresentar a Kleber antes de contratar.
+**Testável:** Emitir uma NFS-e de teste com sucesso em homologação a partir de uma transação paga.
+**Notas:** Sem custo de provedor — já é o caminho "de graça" (via direta com a Prefeitura). Instruções detalhadas de cada passo em `docs/memoria/plano-tarefas.md`.
 
 ---
 
@@ -121,3 +129,4 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 | 2026-08-26 | Shiva conduziu descoberta + MoSCoW (tudo Must Have, sem faseamento de escopo). Hades recebeu a spec, mapeou bloqueios reais do ambiente (sem git, sem GitHub/Supabase MCP, conta Vercel/Supabase da sessão é a pessoal do Kleber, não a de deploy) e criou o roadmap em 4 fases. |
 | 2026-08-26 | Atlas inicializou o git local, renomeou branch padrão para `main`, criou `dev`/`hml`, e publicou o repositório em github.com/TorneariaCastro/tornearia-castro — a conta `gh` já autenticada era a certa, sem precisar pedir nada a Kleber. Fase 01 aguardando credenciais Vercel/Supabase da conta separada. |
 | 2026-08-26 | Atlas implementou schema+RLS (SQL pronto, não aplicado), Supabase Auth, proxy de rota, e substituiu todos os mocks por dados reais (commits `0f16a06`, `c728d0c` em `dev`). Build/lint/typecheck OK. Dois bloqueios ficaram para Kleber resolver: aplicar a migration (sem Management API token) e autorizar `vercel link` (negado pelo classificador de permissão). |
+| 2026-09-07 | Kleber pediu a ativação da NFS-e real de BH. Shiva conduziu discovery focada (caminho direto vs provedor, certificado, cadastro municipal, homologação) e documentou a decisão em `docs/memoria/integracao-nfse-bh.md`. Hades recebeu a spec, confirmou via pesquisa web os endpoints do webservice BHISS Digital (homologação e produção) e criou o plano técnico de 8 passos em `plano-tarefas.md` para o Atlas. |

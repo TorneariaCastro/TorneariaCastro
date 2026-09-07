@@ -1,3 +1,11 @@
+# Plano de Tarefas
+
+## ÍNDICE
+- FASE 01: FUNDAÇÃO (concluída — ver seções abaixo)
+- FASE 02: NFS-E REAL — BELO HORIZONTE (abaixo, no fim do arquivo)
+
+---
+
 # Plano de Tarefas — FASE 01: FUNDAÇÃO
 
 ## INSTRUÇÕES PARA ATLAS — Inicializar Git + GitFlow
@@ -241,3 +249,99 @@ Nenhuma política para `anon` — sem RLS liberado, não-autenticado não lê ne
 
 ### Em caso de erro
 Erro de schema/RLS = 🔴 Terminal, reportar a Hades com a mensagem exata do Postgres. Erro de dependência/instalação = seguir protocolo Retryable (3x) antes de escalar.
+
+---
+
+# Plano de Tarefas — FASE 02: NFS-E REAL (Belo Horizonte - MG)
+
+## Contexto Geral (ler antes de tudo)
+
+A Fase 01 está encerrada: banco real, auth real, papéis (administrador/consultor) funcionando em produção. Agora a peça que falta é a mais importante do negócio — emitir nota fiscal de verdade.
+
+Decisão já validada por Kleber com a Shiva (`docs/memoria/integracao-nfse-bh.md`): integração **direta** com o webservice BHISS Digital da Prefeitura de Belo Horizonte. Nada de provedor pago no meio (Focus NFe, NFE.io etc) — o preço dessa escolha é que você (Atlas) vai construir SOAP + assinatura XML (XMLDSig) + autenticação mútua por certificado (mTLS) na mão. Não é o caminho mais curto, é o caminho mais barato. Encare com humildade técnica: sistemas de prefeitura não foram feitos pra facilitar sua vida.
+
+**Endpoints do webservice (confirmados via pesquisa, mas RE-CONFIRME no Passo 1 antes de codificar — não presuma):**
+- Homologação (teste, sem valor fiscal): `https://bhisshomologa.pbh.gov.br/bhiss-ws/nfse?wsdl`
+- Produção (valor fiscal real): `https://bhissdigital.pbh.gov.br/bhiss-ws/nfse?wsdl`
+
+**Contrato que já existe e não muda** (`src/lib/services/nfse/types.ts`): `NfseService` com `emitir()`, `consultarStatus()`, `cancelar()`. A Server Action que já chama isso é `src/app/(app)/notas-fiscais/actions.ts` (função `emitirNfse`) — hoje importa `nfseService` de `mock-nfse-service.ts`. No fim desta fase, a única mudança nesse arquivo é trocar esse import pelo serviço real.
+
+---
+
+## PASSO 1 — Confirmar a documentação técnica vigente (não presumir)
+
+A versão do manual de integração que encontrei em busca é de **2009** — municípios costumam evoluir o layout (ABRASF 1.0 → 2.0x) sem trocar a URL. Antes de escrever uma linha de código:
+
+1. Acesse `www.pbh.gov.br/bhissdigital` (portal) e `bhissdigital.pbh.gov.br` e baixe o manual de integração e o XSD **vigentes hoje**, não os de 2009.
+2. Confirme: versão do layout ABRASF em uso, algoritmo de assinatura exigido (historicamente SHA-1/RSA no ABRASF — confirme se BH já exige SHA-256), a operação SOAP usada para emitir NFS-e a partir de RPS de forma síncrona (esperado: `GerarNfse`, recebendo um lote com 1 RPS), e as operações de consulta/cancelamento (`ConsultarNfse`, `CancelarNfse` ou nomes equivalentes no WSDL real).
+3. Referência cruzada útil (não é a fonte oficial, mas ajuda a validar campos e particularidades de BH que fogem do ABRASF padrão): o projeto open-source **ACBr** já tem um perfil pronto pra Belo Horizonte — `github.com/frones/ACBr`, arquivo `Exemplos/ACBrDFe/ACBrNFSe/ArqINI/BHISS.ini`. É Delphi, não dá pra copiar código, mas mostra exatamente quais campos/quirks BH exige.
+4. Se algo não bater com o que está documentado aqui, isso não é bloqueio — é você fazendo seu trabalho. Ajuste os passos seguintes com o dado real e documente a diferença no relatório final.
+
+## PASSO 2 — Credenciais (pedir a Kleber, uma única vez)
+
+Isso aqui NÃO dá pra automatizar via MCP — é um arquivo físico que só a Tornearia Castro possui. Peça a Kleber:
+- **Inscrição Municipal** da Tornearia Castro em BH (número)
+- **Arquivo `.pfx`** do certificado digital e-CNPJ (A1)
+- **Senha** do certificado
+
+Oriente Kleber a enviar o `.pfx` como anexo de arquivo (nunca pedir pra ele colar conteúdo binário como texto no chat).
+
+## PASSO 3 — Armazenar como segredo
+
+Nunca commitar. Nunca prefixo `NEXT_PUBLIC_*` (o certificado e a senha não podem chegar ao navegador). Variáveis:
+
+```
+NFSE_BH_INSCRICAO_MUNICIPAL=<recebido de Kleber>
+NFSE_BH_CERTIFICADO_PFX_BASE64=<arquivo .pfx convertido pra base64>
+NFSE_BH_CERTIFICADO_SENHA=<senha recebida de Kleber>
+NFSE_BH_WSDL_URL=https://bhisshomologa.pbh.gov.br/bhiss-ws/nfse?wsdl
+```
+
+`NFSE_BH_WSDL_URL` começa apontando pra **homologação** — só troca pra produção depois do Passo 7 aprovado por Kleber. Adicionar ao `.env.local` (confirmar que está no `.gitignore`) e às env vars do projeto Vercel (`telascastroclaudia@gmail.com`) — ambiente de produção separado do de preview, já que homologação não deve nunca rodar sem querer com URL de produção.
+
+## PASSO 4 — Dependências
+
+```bash
+npm install xml-crypto node-forge fast-xml-parser
+```
+- `xml-crypto`: assinatura XMLDSig do XML do RPS/lote
+- `node-forge`: extrair chave privada + certificado do `.pfx` (formato PKCS#12) e montar o agente HTTPS com autenticação mútua (mTLS) — o certificado é exigido tanto na camada de transporte quanto na assinatura do XML, são dois usos diferentes do mesmo arquivo, não confundir
+- `fast-xml-parser`: parsear a resposta SOAP/XML da prefeitura (sucesso ou erro) sem depender de um XSD gigante
+
+Não instale uma lib de "SOAP client" genérica de terceiros sem antes checar se ela suporta certificado cliente customizado — muitas não suportam bem. Se necessário, montar o envelope SOAP manualmente com `fetch`/`https.Agent({ pfx, passphrase })` é mais previsível aqui do que depender de abstração de lib.
+
+## PASSO 5 — Numeração sequencial de RPS (migration nova)
+
+ABRASF exige RPS com numeração sequencial, sem furos nem repetição, por série. Criar `supabase/migrations/0003_nfse_rps_sequencial.sql`:
+
+```sql
+create sequence if not exists nfse_rps_sequencial start 1 increment 1;
+```
+
+Usar `nextval('nfse_rps_sequencial')` no momento de montar o RPS — nunca gerar o número em memória no Node (concorrência entre duas emissões simultâneas causaria RPS duplicado, e a prefeitura rejeita ou pior, aceita errado). Persistir o número do RPS usado em `notas_fiscais` (ou coluna nova, se fizer sentido) **antes** de enviar a chamada SOAP — assim, se a chamada falhar no meio do caminho, você sabe que aquele número já foi consumido e não tenta reusá-lo.
+
+## PASSO 6 — Implementar `BhissNfseService`
+
+Arquivo novo: `src/lib/services/nfse/bhiss-nfse-service.ts`, implementando `NfseService` (mesma interface do mock, não mude a UI nem o schema).
+
+- `emitir()`: monta XML do RPS com os dados de `EmissaoNfseRequest` + inscrição municipal + número de RPS sequencial → assina com XMLDSig usando a chave extraída do `.pfx` → envia via SOAP (mTLS) pra `NFSE_BH_WSDL_URL` → parseia a resposta → devolve `EmissaoNfseResult` preenchido (em caso de erro do webservice, `status: "erro"` com `mensagemErro` legível, nunca deixe a Server Action estourar exceção genérica pro usuário)
+- `consultarStatus()` e `cancelar()`: mesma lógica, usando as operações SOAP correspondentes confirmadas no Passo 1
+- Trocar o import em `src/app/(app)/notas-fiscais/actions.ts`: de `mock-nfse-service` pra `bhiss-nfse-service`. Nada mais nesse arquivo deveria precisar mudar — a Server Action já grava em `notas_fiscais` do jeito certo.
+
+## PASSO 7 — Testar em homologação (obrigatório antes de qualquer coisa em produção)
+
+- Emitir uma NFS-e de teste a partir de uma transação real marcada como paga, com `NFSE_BH_WSDL_URL` apontando pra homologação
+- Confirmar número, código de verificação e link do PDF retornados batem com o painel de homologação da prefeitura
+- Testar `consultarStatus()` e `cancelar()`
+- Forçar um cenário de erro (ex: XML com campo inválido de propósito) e confirmar que a UI mostra mensagem legível, sem crash
+- **Não trocar `NFSE_BH_WSDL_URL` pra produção sem aprovação explícita de Kleber** — isso emite nota fiscal de verdade, com efeito legal real
+
+### Critério de Aceitação
+`npm run build` sem erros. NFS-e de teste emitida com sucesso em homologação, persistida em `notas_fiscais`, visível na aba Notas Fiscais. Cancelamento testado. Erro proposital tratado sem crash.
+
+### Em caso de erro
+Erro de resposta do webservice (SOAP Fault) = documentar a mensagem exata da prefeitura, não é bug seu — pode ser dado incorreto (inscrição municipal, alíquota) ou campo faltando no XML. Erro de assinatura/certificado (`.pfx` inválido, senha errada) = 🔴 Terminal, parar e reportar a Hades — não adivinhar a senha nem gerar novo certificado sem Kleber. Após 2 tentativas sem sucesso no mesmo problema, escalar pro Hades com o Protocolo de RCA.
+
+## PASSO 8 — Relatório obrigatório
+
+Formato padrão do Hades (STATUS / STEPS EXECUTADOS / OUTPUT DO TERMINAL / ESTADO ATUAL / ERROS ENCONTRADOS), incluindo explicitamente: qual versão de layout ABRASF foi confirmada no Passo 1, e se ela bateu com o que este plano presumiu.
