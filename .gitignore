@@ -44,3 +44,6 @@ next-env.d.ts
 
 # playwright debug artifacts
 .playwright-mcp/
+
+# supabase cli local state
+supabase/.temp/
