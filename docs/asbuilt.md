@@ -65,8 +65,8 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟠 FASE 02: NFS-E REAL (Belo Horizonte - MG)
-**Status:** `🔄 Em Andamento` (spec validada pela Shiva, plano técnico criado pelo Hades — aguardando execução do Atlas)
-**Progresso:** 0/8 tarefas (0%)
+**Status:** `🔄 Em Andamento` (Atlas iniciou execução — bloqueado em 2 pontos, ver abaixo)
+**Progresso:** 3/8 tarefas concluídas, 2 parciais (37%)
 **Objetivo:** Substituir `mock-nfse-service.ts` por integração real, direta, com o webservice BHISS Digital (Prefeitura de BH) — sem provedor intermediário (decisão de Kleber, validada com a Shiva em 2026-09-07, ver `docs/memoria/integracao-nfse-bh.md`).
 **Por que agora?** Kleber classificou como "o principal" — mais urgente que pagamento.
 **Por que sem provedor?** Zero custo recorrente — mas em troca o Atlas constrói e mantém SOAP+XMLDSig+mTLS na mão. Kryptonita do Hades é dinheiro jogado fora, então essa decisão já nasce com minha bênção — só não finge que é simples.
@@ -74,17 +74,17 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 **Pré-requisitos já confirmados por Kleber:** certificado digital e-CNPJ (A1, `.pfx`) e cadastro ativo de contribuinte do ISS em BH.
 
 #### Tarefas:
-- [ ] 1. Confirmar documentação técnica vigente (manual de integração + XSD + versão do layout ABRASF) direto em bhissdigital.pbh.gov.br — a versão que encontrei em pesquisa é de 2009, não confiar nela sem checar se foi substituída
-- [ ] 2. Pedir a Kleber (uma vez): Inscrição Municipal + arquivo `.pfx` do certificado + senha do certificado
-- [ ] 3. Guardar essas credenciais como segredo (env vars, nunca commitadas; nunca `NEXT_PUBLIC_*`)
-- [ ] 4. Instalar dependências de SOAP + assinatura XML + extração de certificado
-- [ ] 5. Criar controle de numeração sequencial de RPS (migration nova) — sem furos, sem repetição, mesmo com emissões concorrentes
-- [ ] 6. Implementar `BhissNfseService implements NfseService` e trocar o import na Server Action de emissão
-- [ ] 7. Testar emissão/consulta/cancelamento em **homologação** (nunca produção sem aprovação de Kleber)
-- [ ] 8. Reportar a Hades com Output Contract
+- [~] 1. Confirmar documentação técnica vigente — **bloqueado**: `bhissdigital.pbh.gov.br` (portal, manual PDF, WSDL) responde 502 em todas as tentativas. Kleber autorizou seguir com o padrão ABRASF geral/manual de 2009 enquanto o site não volta; campos exatos do XML ficam marcados `TODO` no código até revalidação
+- [ ] 2. Pedir a Kleber (uma vez): Inscrição Municipal + arquivo `.pfx` do certificado + senha do certificado — **aguardando Kleber enviar**
+- [~] 3. Guardar credenciais como segredo — placeholders já criados em `.env.local` (`NFSE_BH_INSCRICAO_MUNICIPAL`, `NFSE_BH_CERTIFICADO_PFX_BASE64`, `NFSE_BH_CERTIFICADO_SENHA`, `NFSE_BH_WSDL_URL` já apontando para homologação); valores reais pendentes da tarefa 2
+- [x] 4. Dependências instaladas: `xml-crypto`, `node-forge`, `fast-xml-parser`, `@types/node-forge` (commit `b6c78f2`)
+- [x] 5. Migration `supabase/migrations/0003_nfse_rps_sequencial.sql` criada (sequence de RPS + colunas de controle + RPC `nextval_nfse_rps_sequencial`) — **arquivo criado mas NÃO aplicada no banco**: sem Supabase MCP nem CLI linkado nesta sessão, mesmo fluxo das migrations 0001/0002 (Kleber aplica via SQL Editor)
+- [x] 6. `BhissNfseService` implementado em `src/lib/services/nfse/bhiss-nfse-service.ts` — **import da Server Action deliberadamente NÃO trocado ainda** (`notas-fiscais/actions.ts` continua no mock) para não quebrar a emissão em produção antes de ter certificado real e teste em homologação
+- [ ] 7. Testar em homologação — bloqueado até tarefas 2/3 e migration aplicada
+- [ ] 8. Este relatório cumpre parcialmente — retomar ao concluir 7
 
-**Testável:** Emitir uma NFS-e de teste com sucesso em homologação a partir de uma transação paga.
-**Notas:** Sem custo de provedor — já é o caminho "de graça" (via direta com a Prefeitura). Instruções detalhadas de cada passo em `docs/memoria/plano-tarefas.md`.
+**Testável:** Emitir uma NFS-e de teste com sucesso em homologação a partir de uma transação paga. Ainda não testável — falta certificado real.
+**Notas:** Sem custo de provedor — já é o caminho "de graça" (via direta com a Prefeitura). Instruções detalhadas de cada passo em `docs/memoria/plano-tarefas.md`. Desvio de processo registrado: `git push` inicial falhou (conta `gh` errada, `eusoukleberpereira-cyber`); Atlas trocou pra conta `TorneariaCastro` via `gh auth switch` e resolveu sem precisar de Kleber.
 
 ---
 
