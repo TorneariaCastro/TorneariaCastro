@@ -186,10 +186,9 @@ function montarXmlDps(params: {
   numeroDps: number;
   serieDps: string;
   req: EmissaoNfseRequest;
-  inscricaoMunicipal: string;
   cnpjPrestador: string;
 }): string {
-  const { numeroDps, serieDps, req, inscricaoMunicipal, cnpjPrestador } = params;
+  const { numeroDps, serieDps, req, cnpjPrestador } = params;
   const agora = new Date().toISOString();
 
   // Formato do Id confirmado no ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe-v1.01
@@ -218,7 +217,18 @@ function montarXmlDps(params: {
   // pequena, provavelmente Simples Nacional (a confirmar com o
   // contador). Se ela NAO for optante do Simples, revisar isso antes de
   // homologar.
+  // A declaracao XML abaixo e OBRIGATORIA - confirmado testando ao vivo
+  // contra o servidor de homologacao (sem ela, erro E1229 "Xml nao esta
+  // utilizando codificacao UTF-8"). O <IM> do prestador foi REMOVIDO de
+  // proposito: o servidor rejeitou com E0120 quando enviado ("IM do
+  // prestador nao deve ser informado, pois nao existem informacoes
+  // complementares registradas no CNC NFS-e") - o sistema resolve a
+  // inscricao municipal sozinho a partir do CNPJ. O grupo <totTrib> com
+  // indTotTrib=0 (Decreto 8.264/2014, opcao de nao informar valor
+  // estimado de tributos) e OBRIGATORIO no schema, mesmo que pareça
+  // opcional pela ocorrencia - sem ele o schema rejeita o <trib>.
   return (
+    `<?xml version="1.0" encoding="UTF-8"?>` +
     `<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">` +
     `<infDPS Id="${idDps}">` +
     `<tpAmb>${TP_AMBIENTE}</tpAmb>` +
@@ -231,7 +241,6 @@ function montarXmlDps(params: {
     `<cLocEmi>${CODIGO_MUNICIPIO_BH}</cLocEmi>` +
     `<prest>` +
     `<CNPJ>${cnpjPrestador}</CNPJ>` +
-    `<IM>${inscricaoMunicipal}</IM>` +
     `<regTrib>` +
     `<opSimpNac>${OP_SIMPLES_NACIONAL}</opSimpNac>` +
     `<regEspTrib>${REGIME_ESPECIAL_TRIBUTACAO}</regEspTrib>` +
@@ -251,7 +260,9 @@ function montarXmlDps(params: {
     `<tribISSQN>1</tribISSQN>` + // 1 = Operacao tributavel (caso padrao)
     `<tpRetISSQN>1</tpRetISSQN>` + // 1 = Nao retido
     `<pAliq>${req.aliquotaIss}</pAliq>` +
-    `</tribMun></trib>` +
+    `</tribMun>` +
+    `<totTrib><indTotTrib>0</indTotTrib></totTrib>` +
+    `</trib>` +
     `</valores>` +
     `</infDPS>` +
     `</DPS>`
@@ -296,11 +307,6 @@ const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
 
 export class SefinNacionalNfseService implements NfseService {
   async emitir(req: EmissaoNfseRequest): Promise<EmissaoNfseResult> {
-    const inscricaoMunicipal = process.env.NFSE_BH_INSCRICAO_MUNICIPAL;
-    if (!inscricaoMunicipal) {
-      throw new Error("NFSE_BH_INSCRICAO_MUNICIPAL nao configurada.");
-    }
-
     const cert = carregarCertificado();
     const cnpjPrestador = extrairCnpjDoCertificado(cert.certificadoPem);
     const numeroDps = await proximoNumeroDps();
@@ -310,20 +316,20 @@ export class SefinNacionalNfseService implements NfseService {
       numeroDps,
       serieDps,
       req,
-      inscricaoMunicipal,
       cnpjPrestador,
     });
     const xmlAssinado = assinarXml(xmlDps, cert.chavePrivadaPem, cert.certificadoPem);
     const payloadGzipBase64 = gzipBase64(xmlAssinado);
 
     try {
-      // TODO(validar contra documentacao oficial - Swagger nao acessivel
-      // nesta sessao): confirmar se o corpo esperado e texto puro
-      // (gzip+base64 direto) ou um JSON com o campo contendo esse valor.
+      // Formato do corpo CONFIRMADO testando ao vivo contra o servidor de
+      // homologacao (2026-09-08): e um JSON com o campo "dpsXmlGZipB64",
+      // NAO texto puro. Content-Type precisa ser application/json - texto
+      // puro retorna 415.
       const response = await fetch(`${SEFIN_BASE_URL}/nfse`, {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: payloadGzipBase64,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dpsXmlGZipB64: payloadGzipBase64 }),
         // @ts-expect-error -- agente https customizado (mTLS) nao faz parte do tipo padrao do fetch
         agent: agenteMtls(cert),
       });
