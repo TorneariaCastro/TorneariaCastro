@@ -14,16 +14,22 @@ import type {
  * Implementacao real do NfseService para o webservice BHISS Digital
  * (Prefeitura de Belo Horizonte), layout ABRASF.
  *
- * ATENCAO: a estrutura exata do envelope SOAP e dos campos do RPS abaixo
- * segue o padrao ABRASF geral. O manual oficial de BH nao pode ser
- * confirmado nesta sessao porque bhissdigital.pbh.gov.br respondeu 502
- * em toda tentativa de acesso (portal, PDF do manual, WSDL). Kleber
- * autorizou seguir com o padrao ABRASF conhecido enquanto o site nao
- * volta. NAO EMITIR EM PRODUCAO sem antes validar em homologacao
- * (Passo 7 do plano) e sem revalidar este arquivo contra o manual/XSD
- * reais assim que o site da Prefeitura voltar ao ar.
+ * ATENCAO: bhissdigital.pbh.gov.br (portal, manual PDF, WSDL) continua
+ * respondendo 502 nesta sessao (2026-09-08) - segue sem confirmacao
+ * oficial. Como referencia cruzada, revalidamos a estrutura do envelope
+ * SOAP contra o arquivo de configuracao do provedor BHISS do projeto
+ * open-source ACBr (github.com/frones/ACBr, Exemplos/ACBrDFe/ACBrNFSe/
+ * ArqINI/BHISS.ini) - nao e a fonte oficial, mas e usado por outros
+ * sistemas que ja emitem NFS-e de verdade em BH. Isso corrigiu um erro
+ * estrutural real (envelope sem nfseCabecMsg/nfseDadosMsg e SOAPAction
+ * incompleto). O que ainda depende do manual/XSD oficiais continua
+ * marcado como TODO. NAO EMITIR EM PRODUCAO sem antes validar em
+ * homologacao (Passo 7 do plano) e sem revalidar este arquivo contra o
+ * manual/XSD reais assim que o site da Prefeitura voltar ao ar.
  */
 
+const BHISS_NAMESPACE = "http://ws.bhiss.pbh.gov.br";
+const ABRASF_NAMESPACE = "http://www.abrasf.org.br/nfse.xsd";
 const RPS_TIPO_RPS = "1"; // ABRASF: 1 = RPS comum
 const RPS_STATUS_NORMAL = "1"; // ABRASF: 1 = normal
 
@@ -92,7 +98,7 @@ function montarXmlRps(params: {
   // municipio (IBGE 3106200), item de lista de servico e codigo CNAE devem
   // ser confirmados quando o manual estiver acessivel novamente.
   return (
-    `<Rps xmlns="http://www.abrasf.org.br/nfse.xsd">` +
+    `<Rps xmlns="${ABRASF_NAMESPACE}">` +
     `<InfDeclaracaoPrestacaoServico Id="RPS${serieRps}${numeroRps}">` +
     `<Rps>` +
     `<IdentificacaoRps><Numero>${numeroRps}</Numero><Serie>${serieRps}</Serie><Tipo>${RPS_TIPO_RPS}</Tipo></IdentificacaoRps>` +
@@ -152,9 +158,19 @@ function agenteMtls(cert: CertificadoCarregado): https.Agent {
   });
 }
 
+function montarCabecalhoMsg(): string {
+  // Confirmado via ACBr/BHISS.ini ([CabecalhoMsg]) - mesmo texto para
+  // producao e homologacao.
+  return (
+    `<cabecalho versao="1.00" xmlns="${ABRASF_NAMESPACE}">` +
+    `<versaoDados>1.00</versaoDados>` +
+    `</cabecalho>`
+  );
+}
+
 async function enviarSoap(params: {
   operacao: "GerarNfse" | "ConsultarNfse" | "CancelarNfse";
-  xmlPayload: string;
+  dadosMsg: string;
   cert: CertificadoCarregado;
 }): Promise<string> {
   const wsdlUrl = process.env.NFSE_BH_WSDL_URL;
@@ -163,21 +179,28 @@ async function enviarSoap(params: {
   }
   const endpoint = wsdlUrl.replace(/\?wsdl$/i, "");
 
-  // TODO(validar contra WSDL real de BH): nome do elemento raiz da operacao
-  // SOAP e do wrapper de dados (padrao ABRASF costuma usar
-  // nfseCabecMsg/nfseDadosMsg) precisam bater com o WSDL vigente.
+  // Estrutura do envelope confirmada via ACBr/BHISS.ini (secoes
+  // [Recepcionar]/[ConsNFSe]/[Cancelar]/[Gerar]): o corpo SOAP sempre
+  // separa nfseCabecMsg (cabecalho fixo) de nfseDadosMsg (payload real),
+  // ambos dentro de um unico elemento "<Operacao>Request" no namespace
+  // BHISS_NAMESPACE. O CDATA garante que o XML interno chegue intacto
+  // independente do parser do lado da Prefeitura.
+  const cabecalhoMsg = montarCabecalhoMsg();
   const envelope =
     `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.bhiss.pbh.gov.br">` +
-    `<soapenv:Body><ws:${params.operacao}Request>` +
-    `<![CDATA[${params.xmlPayload}]]>` +
-    `</ws:${params.operacao}Request></soapenv:Body></soapenv:Envelope>`;
+    `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns2="${BHISS_NAMESPACE}">` +
+    `<soapenv:Body><ns2:${params.operacao}Request>` +
+    `<nfseCabecMsg><![CDATA[${cabecalhoMsg}]]></nfseCabecMsg>` +
+    `<nfseDadosMsg><![CDATA[${params.dadosMsg}]]></nfseDadosMsg>` +
+    `</ns2:${params.operacao}Request></soapenv:Body></soapenv:Envelope>`;
 
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "text/xml; charset=utf-8",
-      SOAPAction: params.operacao,
+      // SOAPAction precisa ser a URL completa da operacao, nao so o nome
+      // (confirmado via ACBr/BHISS.ini, secao [SoapAction]).
+      SOAPAction: `${BHISS_NAMESPACE}/${params.operacao}`,
     },
     body: envelope,
     // @ts-expect-error -- agente https customizado (mTLS) nao faz parte do tipo padrao do fetch
@@ -214,10 +237,25 @@ export class BhissNfseService implements NfseService {
     });
     const xmlAssinado = assinarXml(xmlRps, cert.chavePrivadaPem, cert.certificadoPem);
 
+    // Confirmado via ACBr/BHISS.ini ([Gerar] TagGrupo=GerarNfseEnvio,
+    // TagElemento=LoteRps): o RPS assinado vai dentro de um wrapper
+    // GerarNfseEnvio > LoteRps.
+    // TODO(validar contra manual/XSD oficial de BH): o mesmo arquivo lista
+    // Assinar.LoteGerar=1, o que sugere que o LoteRps (nao so o Rps
+    // individual) tambem pode precisar de uma segunda assinatura XMLDSig
+    // propria. Nao implementamos essa segunda assinatura ainda porque nao
+    // temos como confirmar a estrutura exata (Id do elemento, digest) sem
+    // o manual/XSD real - se a Prefeitura rejeitar por assinatura ausente
+    // no lote, essa e a causa mais provavel.
+    const dadosMsg =
+      `<GerarNfseEnvio xmlns="${ABRASF_NAMESPACE}">` +
+      `<LoteRps>${xmlAssinado}</LoteRps>` +
+      `</GerarNfseEnvio>`;
+
     try {
       const respostaXml = await enviarSoap({
         operacao: "GerarNfse",
-        xmlPayload: xmlAssinado,
+        dadosMsg,
         cert,
       });
       return interpretarRespostaEmissao(respostaXml, req, numeroRps, serieRps);
@@ -243,11 +281,11 @@ export class BhissNfseService implements NfseService {
     }
     // TODO(validar contra manual de BH): payload exato de ConsultarNfse por RPS.
     const xmlConsulta =
-      `<ConsultarNfseRpsEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">` +
+      `<ConsultarNfseRpsEnvio xmlns="${ABRASF_NAMESPACE}">` +
       `<IdentificacaoRps><Numero>${id}</Numero></IdentificacaoRps>` +
       `<Prestador><InscricaoMunicipal>${inscricaoMunicipal}</InscricaoMunicipal></Prestador>` +
       `</ConsultarNfseRpsEnvio>`;
-    const respostaXml = await enviarSoap({ operacao: "ConsultarNfse", xmlPayload: xmlConsulta, cert });
+    const respostaXml = await enviarSoap({ operacao: "ConsultarNfse", dadosMsg: xmlConsulta, cert });
     const parsed = parser.parse(respostaXml);
     const temErro = JSON.stringify(parsed).includes("ListaMensagemRetorno");
     if (temErro) return "erro";
@@ -256,10 +294,12 @@ export class BhissNfseService implements NfseService {
 
   async cancelar(id: string): Promise<{ cancelada: boolean }> {
     const cert = carregarCertificado();
-    // TODO(validar contra manual de BH): payload exato de CancelarNfse.
+    // Estrutura Pedido > InfPedidoCancelamento confirmada via ACBr/BHISS.ini
+    // ([Cancelar] DocElemento=Pedido, InfElemento=InfPedidoCancelamento).
+    // TODO(validar contra manual de BH): campos internos exatos alem de IdentificacaoNfse.
     const xmlCancelamento =
-      `<CancelarNfseEnvio xmlns="http://www.abrasf.org.br/nfse.xsd"><Pedido><InfPedidoCancelamento><IdentificacaoNfse><Numero>${id}</Numero></IdentificacaoNfse></InfPedidoCancelamento></Pedido></CancelarNfseEnvio>`;
-    const respostaXml = await enviarSoap({ operacao: "CancelarNfse", xmlPayload: xmlCancelamento, cert });
+      `<CancelarNfseEnvio xmlns="${ABRASF_NAMESPACE}"><Pedido><InfPedidoCancelamento><IdentificacaoNfse><Numero>${id}</Numero></IdentificacaoNfse></InfPedidoCancelamento></Pedido></CancelarNfseEnvio>`;
+    const respostaXml = await enviarSoap({ operacao: "CancelarNfse", dadosMsg: xmlCancelamento, cert });
     return { cancelada: respostaXml.includes("Cancelado") };
   }
 }
@@ -297,8 +337,11 @@ function interpretarRespostaEmissao(
     };
   }
 
+  // Confirmado via ACBr/BHISS.ini ([RetornoNFSe]): a resposta de sucesso
+  // vem envolvida em <CompNfse xmlns="http://www.abrasf.org.br/nfse">
+  // (namespace "/nfse", diferente do "/nfse.xsd" usado no envio).
   // TODO(validar contra manual de BH): caminho exato dos campos Numero/
-  // CodigoVerificacao dentro de CompNfse na resposta de sucesso.
+  // CodigoVerificacao dentro desse CompNfse.
   return {
     id: `rps_${serieRps}_${numeroRps}`,
     numero: String(numeroRps),
