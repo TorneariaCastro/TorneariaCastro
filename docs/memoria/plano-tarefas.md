@@ -254,17 +254,31 @@ Erro de schema/RLS = 🔴 Terminal, reportar a Hades com a mensagem exata do Pos
 
 # Plano de Tarefas — FASE 02: NFS-E REAL (Belo Horizonte - MG)
 
-## Contexto Geral (ler antes de tudo)
+## ⚠️ REPLANEJADO EM 2026-09-08 — alvo mudou de BHISS Digital para SEFIN Nacional/ADN
+
+O plano original abaixo (Passos 1-8) mirava o webservice próprio da Prefeitura de BH (BHISS Digital). Descobrimos que desde 1/1/2026 isso foi substituído pelo Emissor Nacional de NFS-e (obrigatório) — ver `docs/memoria/integracao-nfse-bh.md` para a decisão completa. O código-alvo agora é `src/lib/services/nfse/sefin-nacional-nfse-service.ts` (já criado e com build/typecheck ok), não mais `bhiss-nfse-service.ts` (mantido por histórico, não usado).
+
+**Status real dos passos, com o novo alvo:**
+- [x] Credenciais (Inscrição Municipal + `.pfx` + senha) — já coletadas e gravadas em `.env.local`, continuam válidas (mesmo certificado)
+- [x] Dependências — não precisou de libs novas (reaproveita `xml-crypto`/`node-forge`; GZip é `node:zlib`, nativo)
+- [x] Migration de numeração sequencial (`0003_nfse_rps_sequencial`) — reaproveitada para numerar a DPS também
+- [~] `SefinNacionalNfseService` implementado com a camada de transporte (endpoints, GZip+Base64, assinatura XMLDSig, mTLS) com confiança alta, cruzada entre a página oficial `gov.br/nfse` e relatos técnicos reais de outros desenvolvedores — **mas a estrutura interna exata da tag `<DPS>`/`<infDPS>` (campos de prestador/tomador/serviço/valores, e os campos de IBS/CBS exigidos desde agosto/2026) não foi validada contra o XSD oficial** (documentação é uma SPA em JavaScript que não foi possível renderizar nesta sessão, e o PDF oficial não pode ser extraído como texto) — tudo isso está marcado com `TODO` explícito no código
+- [ ] Testar em homologação — **bloqueado**: não é mais o BHISS que está de boca fechada, é uma limitação desta sessão em acessar a documentação oficial completa. Antes de testar, alguém precisa confirmar a estrutura da DPS contra o XSD oficial (`www.gov.br/nfse` → Documentação Técnica → APIs Prod. Restrita e Produção) — provavelmente abrindo num navegador de verdade, já que as ferramentas automatizadas desta sessão não renderizam a Swagger UI
+- [ ] Campos de IBS/CBS — não implementados ainda
+
+**Contexto original (Fase 01 e motivação), ainda válido:**
 
 A Fase 01 está encerrada: banco real, auth real, papéis (administrador/consultor) funcionando em produção. Agora a peça que falta é a mais importante do negócio — emitir nota fiscal de verdade.
 
-Decisão já validada por Kleber com a Shiva (`docs/memoria/integracao-nfse-bh.md`): integração **direta** com o webservice BHISS Digital da Prefeitura de Belo Horizonte. Nada de provedor pago no meio (Focus NFe, NFE.io etc) — o preço dessa escolha é que você (Atlas) vai construir SOAP + assinatura XML (XMLDSig) + autenticação mútua por certificado (mTLS) na mão. Não é o caminho mais curto, é o caminho mais barato. Encare com humildade técnica: sistemas de prefeitura não foram feitos pra facilitar sua vida.
+**Contrato que já existe e não muda** (`src/lib/services/nfse/types.ts`): `NfseService` com `emitir()`, `consultarStatus()`, `cancelar()`. A Server Action que já chama isso é `src/app/(app)/notas-fiscais/actions.ts` (função `emitirNfse`) — hoje importa `nfseService` de `mock-nfse-service.ts`. A troca desse import só deve acontecer depois que a estrutura da DPS estiver validada e testada em homologação.
+
+---
+
+## Plano original (BHISS Digital) — mantido abaixo por histórico, NÃO é mais o alvo ativo
 
 **Endpoints do webservice (confirmados via pesquisa, mas RE-CONFIRME no Passo 1 antes de codificar — não presuma):**
 - Homologação (teste, sem valor fiscal): `https://bhisshomologa.pbh.gov.br/bhiss-ws/nfse?wsdl`
 - Produção (valor fiscal real): `https://bhissdigital.pbh.gov.br/bhiss-ws/nfse?wsdl`
-
-**Contrato que já existe e não muda** (`src/lib/services/nfse/types.ts`): `NfseService` com `emitir()`, `consultarStatus()`, `cancelar()`. A Server Action que já chama isso é `src/app/(app)/notas-fiscais/actions.ts` (função `emitirNfse`) — hoje importa `nfseService` de `mock-nfse-service.ts`. No fim desta fase, a única mudança nesse arquivo é trocar esse import pelo serviço real.
 
 ---
 

@@ -1,9 +1,24 @@
-# Integração NFS-e — Prefeitura de Belo Horizonte (BHISS Digital)
+# Integração NFS-e — Belo Horizonte (Sistema Nacional NFS-e / SEFIN Nacional)
 
-## Decisão (validada com Kleber em 2026-09-07)
+## ⚠️ ATUALIZAÇÃO CRÍTICA (2026-09-08) — BHISS Digital não é mais o alvo certo
+A decisão original abaixo (2026-09-07) mirava o webservice próprio da Prefeitura de BH (BHISS Digital, `bhiss-ws`). Um dia depois, o Hades descobriu — pesquisando por que o webservice respondia 502 — que **desde 1º de janeiro de 2026 a emissão de NFS-e em BH é obrigatória pelo Emissor Nacional (SEFIN Nacional / ADN)**, sistema federal que substituiu o BHISS Digital. Fonte: página oficial da própria Prefeitura de BH (`prefeitura.pbh.gov.br/noticias/belo-horizonte-adere-ao-emissor-nacional-de-nota-fiscal-de-servico-eletronica`) e portal `gov.br/nfse`. O 502 provavelmente é o webservice antigo sendo desativado, não instabilidade passageira.
+
+**O que muda na prática:**
+- O documento fiscal se chama **DPS** (Declaração de Prestação de Serviço), não mais RPS
+- O endpoint, formato de envio (XML assinado, comprimido em GZip e codificado em Base64) e as URLs mudaram — ver `src/lib/services/nfse/sefin-nacional-nfse-service.ts`
+- Desde agosto/2026, a Reforma Tributária exige campos de **IBS/CBS** na nota (ainda não implementados no código — TODO explícito)
+- O certificado digital e-CNPJ da Tornearia Castro continua sendo o mesmo — isso não muda
+
+A implementação antiga (`bhiss-nfse-service.ts`, mirando BHISS Digital direto) foi **mantida no repositório por histórico, mas não é mais o caminho ativo**. Decisão original preservada abaixo para contexto.
+
+---
+
+## Decisão original (validada com Kleber em 2026-09-07) — SUPERADA, ver aviso acima
 Integração **direta** com o webservice da Prefeitura de Belo Horizonte (BHISS Digital), sem provedor intermediário (Focus NFe, NFE.io, etc). Sem custo recorrente de terceiro — em troca, o Atlas constrói e mantém a comunicação SOAP/XML e a assinatura digital por conta própria.
 
 **Alerta da Shiva pro Kleber:** esse caminho é mais trabalhoso de construir do que um provedor pronto — o Hades precisa tratar isso como tarefa não-trivial (assinatura XMLDSig, webservice SOAP legado, tratamento de erro do lado da Prefeitura). Se em algum momento o esforço não compensar, dá pra trocar de estratégia depois — a interface `NfseService` já foi desenhada exatamente pra isso (trocar a implementação sem mexer na UI).
+
+**Nota (2026-09-08):** essa mesma flexibilidade da interface `NfseService` é o que permitiu trocar de BHISS Digital pro Emissor Nacional sem tocar na UI nem no banco — decisão original da Shiva se provou correta mesmo com a mudança de alvo.
 
 ## Pré-requisitos confirmados
 - ✅ Certificado digital e-CNPJ (A1, arquivo `.pfx`) — Tornearia Castro já possui
@@ -28,10 +43,11 @@ A implementação deve ler a URL do webservice (homologação vs produção) de 
 Emissão acontece por transação financeira marcada como **paga**, na tela Financeiro — não é um botão solto em Ordens de Serviço.
 
 ## Contrato já existente (não muda)
-`src/lib/services/nfse/types.ts` já define `NfseService` (`emitir`, `consultarStatus`, `cancelar`) e o schema `notas_fiscais` já está no plano de migration (`plano-tarefas.md`). O trabalho do Hades/Atlas aqui é **implementar uma classe `BhissNfseService implements NfseService`** que fala com o webservice real, substituindo `MockNfseService` — a UI e o banco não mudam.
+`src/lib/services/nfse/types.ts` já define `NfseService` (`emitir`, `consultarStatus`, `cancelar`) e o schema `notas_fiscais` já está no plano de migration (`plano-tarefas.md`). A UI e o banco não mudam — só a implementação por trás da interface, que agora é `SefinNacionalNfseService` (`src/lib/services/nfse/sefin-nacional-nfse-service.ts`), substituindo `MockNfseService`.
 
 ## Critério de Aceitação (pra Hades formalizar no plano técnico)
-- Emissão de NFS-e de teste em homologação funciona de ponta a ponta (transação paga → XML assinado → envio → nota emitida → status refletido em `notas_fiscais`)
-- Erro do webservice da Prefeitura é capturado e mostrado de forma legível (não é um crash silencioso)
+- Emissão de NFS-e de teste em homologação (SEFIN Nacional) funciona de ponta a ponta (transação paga → DPS assinada → envio → NFS-e emitida → status refletido em `notas_fiscais`)
+- Erro do webservice nacional é capturado e mostrado de forma legível (não é um crash silencioso)
 - Cancelamento de nota funciona
+- Campos de IBS/CBS confirmados e implementados (exigência desde agosto/2026)
 - Só depois disso, Kleber aprova a troca pra produção

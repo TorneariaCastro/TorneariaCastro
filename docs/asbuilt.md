@@ -65,26 +65,27 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟠 FASE 02: NFS-E REAL (Belo Horizonte - MG)
-**Status:** `🔄 Em Andamento` (Atlas iniciou execução — falta só 1 bloqueio, ver abaixo)
-**Progresso:** 4/8 tarefas concluídas, 2 parciais (50%)
-**Objetivo:** Substituir `mock-nfse-service.ts` por integração real, direta, com o webservice BHISS Digital (Prefeitura de BH) — sem provedor intermediário (decisão de Kleber, validada com a Shiva em 2026-09-07, ver `docs/memoria/integracao-nfse-bh.md`).
+**Status:** `🔄 Em Andamento` (replanejada em 2026-09-08 — alvo mudou de BHISS Digital para SEFIN Nacional/ADN, ver `docs/memoria/integracao-nfse-bh.md`)
+**Progresso:** 6/9 tarefas concluídas ou parciais (ver detalhe)
+**Objetivo:** Substituir `mock-nfse-service.ts` por integração real com o **Sistema Nacional de NFS-e (SEFIN Nacional/ADN)** — o webservice próprio da Prefeitura (BHISS Digital) foi **descontinuado**, migração nacional obrigatória desde 1/1/2026 (confirmado na página oficial da Prefeitura de BH).
 **Por que agora?** Kleber classificou como "o principal" — mais urgente que pagamento.
-**Por que sem provedor?** Zero custo recorrente — mas em troca o Atlas constrói e mantém SOAP+XMLDSig+mTLS na mão. Kryptonita do Hades é dinheiro jogado fora, então essa decisão já nasce com minha bênção — só não finge que é simples.
+**Por que a mudança de alvo?** O webservice BHISS Digital vinha respondendo 502 em toda tentativa (Passo 1 do plano original). Investigando o porquê, descobrimos que não era instabilidade — é o sistema antigo sendo desativado porque a legislação (Art. 62 da LC 214/2025) tornou o Emissor Nacional obrigatório para todos os prestadores de BH desde janeiro/2026.
 
-**Pré-requisitos já confirmados por Kleber:** certificado digital e-CNPJ (A1, `.pfx`) e cadastro ativo de contribuinte do ISS em BH.
+**Pré-requisitos já confirmados por Kleber:** certificado digital e-CNPJ (A1, `.pfx`) e cadastro ativo de contribuinte do ISS em BH — continuam válidos, o certificado é o mesmo para o novo sistema.
 
 #### Tarefas:
-- [~] 1. Confirmar documentação técnica vigente — **ainda bloqueado em 2026-09-08**: `bhissdigital.pbh.gov.br` (portal, manual PDF) e o WSDL de homologação (`bhisshomologa.pbh.gov.br/bhiss-ws/nfse?wsdl`) seguem respondendo 502. Como paliativo, cruzamos a estrutura do envelope SOAP contra o `BHISS.ini` do projeto open-source ACBr (referência usada por outros sistemas que já emitem NFS-e real em BH) — não é fonte oficial, mas corrigiu um erro estrutural real (commit `2bee8af`): faltava a separação `nfseCabecMsg`/`nfseDadosMsg` no envelope, `SOAPAction` incompleto, e o RPS assinado da emissão precisava ir dentro de `GerarNfseEnvio > LoteRps`. Campos ainda não confirmáveis sem o manual oficial seguem `TODO` no código (ex: se o `LoteRps` também precisa de assinatura própria; campos exatos dentro de `CompNfse` na resposta)
-- [ ] 2. Pedir a Kleber (uma vez): Inscrição Municipal + arquivo `.pfx` do certificado + senha do certificado — **aguardando Kleber enviar**
-- [~] 3. Guardar credenciais como segredo — placeholders já criados em `.env.local` (`NFSE_BH_INSCRICAO_MUNICIPAL`, `NFSE_BH_CERTIFICADO_PFX_BASE64`, `NFSE_BH_CERTIFICADO_SENHA`, `NFSE_BH_WSDL_URL` já apontando para homologação); valores reais pendentes da tarefa 2
-- [x] 4. Dependências instaladas: `xml-crypto`, `node-forge`, `fast-xml-parser`, `@types/node-forge` (commit `b6c78f2`)
-- [x] 5. Migration `supabase/migrations/0003_nfse_rps_sequencial.sql` — criada e **aplicada por Kleber via SQL Editor em 2026-09-07**; verificado via chamada real ao RPC `nextval_nfse_rps_sequencial` (HTTP 200, retornou `1`) — confirmado que sequence, colunas e função existem no banco
-- [x] 6. `BhissNfseService` implementado em `src/lib/services/nfse/bhiss-nfse-service.ts` — **import da Server Action deliberadamente NÃO trocado ainda** (`notas-fiscais/actions.ts` continua no mock) para não quebrar a emissão em produção antes de ter certificado real e teste em homologação
-- [ ] 7. Testar em homologação — bloqueado até tarefas 2/3 e migration aplicada
-- [ ] 8. Este relatório cumpre parcialmente — retomar ao concluir 7
+- [x] 1. Credenciais (Inscrição Municipal + `.pfx` + senha) — recebidas de Kleber e gravadas em `.env.local`
+- [x] 2. Migration `supabase/migrations/0003_nfse_rps_sequencial.sql` — aplicada e verificada; reaproveitada para numerar a DPS
+- [x] 3. Dependências — reaproveitadas (`xml-crypto`, `node-forge`); GZip via `node:zlib` nativo, sem lib nova
+- [~] 4. `BhissNfseService` (`src/lib/services/nfse/bhiss-nfse-service.ts`) — corrigido contra referência ACBr (commit `2bee8af`), mas **descoberto obsoleto em seguida**: mantido no repo por histórico, não é mais o caminho ativo
+- [x] 5. Descoberta da migração para o Emissor Nacional — pesquisa web confirmou across múltiplas fontes (página oficial da Prefeitura de BH, portal gov.br/nfse, relato técnico de outro desenvolvedor) que BHISS Digital foi substituído
+- [~] 6. `SefinNacionalNfseService` implementado (`src/lib/services/nfse/sefin-nacional-nfse-service.ts`) — camada de transporte (endpoints, GZip+Base64, XMLDSig, mTLS) com confiança alta; estrutura interna da DPS (campos prestador/tomador/serviço/valores) e campos de IBS/CBS **não confirmados contra XSD oficial** (Swagger é SPA em JS, não renderizável nesta sessão) — `TODO` explícito no código. Build e typecheck OK
+- [ ] 7. Confirmar estrutura da DPS contra a documentação oficial (`gov.br/nfse`) — precisa de acesso via navegador real à Swagger UI, não só busca automatizada
+- [ ] 8. Implementar campos de IBS/CBS (Reforma Tributária, obrigatório desde agosto/2026)
+- [ ] 9. Testar em homologação (SEFIN Nacional) — bloqueado até 7 e 8
 
-**Testável:** Emitir uma NFS-e de teste com sucesso em homologação a partir de uma transação paga. Ainda não testável — falta certificado real.
-**Notas:** Sem custo de provedor — já é o caminho "de graça" (via direta com a Prefeitura). Instruções detalhadas de cada passo em `docs/memoria/plano-tarefas.md`. Desvio de processo registrado: `git push` inicial falhou (conta `gh` errada, `eusoukleberpereira-cyber`); Atlas trocou pra conta `TorneariaCastro` via `gh auth switch` e resolveu sem precisar de Kleber.
+**Testável:** Ainda não. Import da Server Action (`notas-fiscais/actions.ts`) continua no mock, deliberadamente — não muda até homologação validar o fluxo real.
+**Notas:** Sem custo de provedor terceiro — o Emissor Nacional também é gratuito. Instruções detalhadas em `docs/memoria/plano-tarefas.md`. Desvio de processo registrado: `git push` inicial falhou (conta `gh` errada, `eusoukleberpereira-cyber`); Atlas trocou pra conta `TorneariaCastro` via `gh auth switch` e resolveu sem precisar de Kleber.
 
 ---
 
