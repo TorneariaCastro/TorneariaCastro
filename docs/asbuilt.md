@@ -66,7 +66,7 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 
 ### 🟠 FASE 02: NFS-E REAL (Belo Horizonte - MG)
 **Status:** `🔄 Em Andamento` (replanejada em 2026-09-08 — alvo mudou de BHISS Digital para SEFIN Nacional/ADN, ver `docs/memoria/integracao-nfse-bh.md`)
-**Progresso:** 6/9 tarefas concluídas ou parciais (ver detalhe)
+**Progresso:** 7/9 tarefas concluídas ou parciais (ver detalhe)
 **Objetivo:** Substituir `mock-nfse-service.ts` por integração real com o **Sistema Nacional de NFS-e (SEFIN Nacional/ADN)** — o webservice próprio da Prefeitura (BHISS Digital) foi **descontinuado**, migração nacional obrigatória desde 1/1/2026 (confirmado na página oficial da Prefeitura de BH).
 **Por que agora?** Kleber classificou como "o principal" — mais urgente que pagamento.
 **Por que a mudança de alvo?** O webservice BHISS Digital vinha respondendo 502 em toda tentativa (Passo 1 do plano original). Investigando o porquê, descobrimos que não era instabilidade — é o sistema antigo sendo desativado porque a legislação (Art. 62 da LC 214/2025) tornou o Emissor Nacional obrigatório para todos os prestadores de BH desde janeiro/2026.
@@ -79,9 +79,9 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 - [x] 3. Dependências — reaproveitadas (`xml-crypto`, `node-forge`); GZip via `node:zlib` nativo, sem lib nova
 - [~] 4. `BhissNfseService` (`src/lib/services/nfse/bhiss-nfse-service.ts`) — corrigido contra referência ACBr (commit `2bee8af`), mas **descoberto obsoleto em seguida**: mantido no repo por histórico, não é mais o caminho ativo
 - [x] 5. Descoberta da migração para o Emissor Nacional — pesquisa web confirmou across múltiplas fontes (página oficial da Prefeitura de BH, portal gov.br/nfse, relato técnico de outro desenvolvedor) que BHISS Digital foi substituído
-- [~] 6. `SefinNacionalNfseService` implementado (`src/lib/services/nfse/sefin-nacional-nfse-service.ts`) — camada de transporte (endpoints, GZip+Base64, XMLDSig, mTLS) com confiança alta; estrutura interna da DPS (campos prestador/tomador/serviço/valores) e campos de IBS/CBS **não confirmados contra XSD oficial** (Swagger é SPA em JS, não renderizável nesta sessão) — `TODO` explícito no código. Build e typecheck OK
-- [ ] 7. Confirmar estrutura da DPS contra a documentação oficial (`gov.br/nfse`) — precisa de acesso via navegador real à Swagger UI, não só busca automatizada
-- [ ] 8. Implementar campos de IBS/CBS (Reforma Tributária, obrigatório desde agosto/2026)
+- [x] 6. `SefinNacionalNfseService` (`src/lib/services/nfse/sefin-nacional-nfse-service.ts`) — estrutura da DPS **revalidada campo a campo** contra o `ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe-v1.01` oficial, baixado direto de gov.br/nfse (a Swagger UI do site é uma SPA em JS que a extensão do Chrome não conseguiu renderizar, mas o anexo `.xlsx` foi baixado via `curl` e extraído com um script Node ad-hoc, já que é só um zip com XML dentro). Confirmado: nomes de tag de `prest`/`toma`/`serv`/`valores`/`trib`; formato do `Id` de 45 caracteres; e que o grupo `IBSCBS` é **opcional e dispensável até 2027 para optantes do Simples Nacional** (o próprio anexo oficial afirma isso) — não é mais TODO esquecido, é omissão deliberada. Build e typecheck OK
+- [~] 7. Dois dados ainda pendentes de confirmação com o contador antes de homologar: `NFSE_BH_CODIGO_TRIB_NACIONAL` (código de 6 dígitos do serviço conforme LC 116/03 — a emissão falha de propósito sem ele, para não chutar classificação fiscal) e `NFSE_BH_OP_SIMPLES_NACIONAL` (situação real da empresa perante o Simples — default conservador "não optante")
+- [ ] 8. Confirmar URL de produção do SEFIN Nacional (hoje só inferida por padrão) e o formato exato do corpo aceito pelo endpoint — pendente de validação real
 - [ ] 9. Testar em homologação (SEFIN Nacional) — bloqueado até 7 e 8
 
 **Testável:** Ainda não. Import da Server Action (`notas-fiscais/actions.ts`) continua no mock, deliberadamente — não muda até homologação validar o fluxo real.

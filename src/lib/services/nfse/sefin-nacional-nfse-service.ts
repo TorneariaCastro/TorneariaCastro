@@ -22,41 +22,49 @@ import type {
  * (bhiss-ws) esta retornando 502 desde que essa migracao entrou em
  * vigor, o que bate com a hipotese de estar sendo desativado.
  *
- * ATENCAO - pesquisado via web em 2026-09-08, SEM acesso ao XSD oficial:
- * a documentacao tecnica oficial (gov.br/nfse) fica em paginas Swagger
- * renderizadas via JS (SPA), que as ferramentas de busca desta sessao
- * nao conseguem executar, e o manual oficial em PDF nao pode ser lido
- * como texto nesta sessao. Os fatos abaixo foram cruzados entre a
- * pagina oficial gov.br/nfse (URLs base) e o relato tecnico de um
- * desenvolvedor que ja integrou de verdade (fonte: "Minha saga com a
- * emissao de NFS-e", tabnews.com.br/Crazynds) + resumos de bibliotecas
- * open-source (OpenAC.Net.NFSe.Nacional, nfse-php) que ja implementam
- * o layout DPS nacional:
+ * ATUALIZACAO 2026-09-08 (mesma sessao, mais tarde): a estrutura interna
+ * da tag <DPS>/<infDPS> abaixo foi REVALIDADA contra o layout OFICIAL,
+ * baixado direto de gov.br/nfse (ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe-v1.01,
+ * atualizado em 2026-02-09 - arquivo .xlsx, extraido via unzip+parse
+ * porque a Swagger UI do site e uma SPA em JS que as ferramentas desta
+ * sessao nao conseguem renderizar). Os nomes de tag/caminho abaixo
+ * (prest, toma, serv/locPrest, serv/cServ, valores/vServPrest,
+ * valores/trib/tribMun) sao AGORA confirmados campo a campo contra a
+ * fonte oficial, nao mais uma aproximacao.
  *
- * - O documento fiscal agora se chama DPS (antes era RPS)
- * - O corpo da requisicao e o XML da DPS, assinado, comprimido em GZip
- *   e codificado em Base64 (NAO e mais SOAP/XML puro como no BHISS)
- * - Autenticacao via certificado digital ICP-Brasil com mTLS (igual ao
- *   BHISS - mesmo .pfx/.pem da Tornearia Castro serve aqui)
- * - Emissao sincrona: POST {SEFIN_BASE}/nfse -> devolve a NFSe pronta
- * - Consulta por chave de acesso: GET {ADN_BASE}/NFSe/{chaveAcesso}
- * - A URL de PRODUCAO do SEFIN Nacional (emissao) NAO foi confirmada -
- *   assumimos o mesmo padrao da URL de homologacao trocando o dominio
- *   (sefin.producaorestrita.nfse.gov.br -> sefin.nfse.gov.br), mas isso
- *   e uma INFERENCIA, nao uma confirmacao. Revalidar antes de trocar
- *   NFSE_NACIONAL_AMBIENTE para "producao".
- * - A estrutura INTERNA da tag <DPS>/<infDPS> (prestador, tomador,
- *   servico, valores, tributos) segue o padrao geral conhecido do
- *   layout nacional, mas os nomes exatos de cada tag NAO foram
- *   validados contra o XSD oficial (DPS_v1.xsd) nesta sessao - todos os
- *   pontos incertos estao marcados com TODO abaixo.
- * - Desde agosto/2026 a Reforma Tributaria exige campos de IBS/CBS na
- *   nota (aliquota de teste: 0,1% IBS + 0,9% CBS) - NAO implementados
- *   ainda, marcado como TODO explicito.
+ * Confirmado tambem pelo mesmo anexo: o grupo IBSCBS (Reforma
+ * Tributaria) tem ocorrencia 0-1 (opcional) na DPS, e o proprio anexo
+ * declara "Para optantes do Simples Nacional, os grupos IBSCBS so serao
+ * obrigatorios a partir de 2027" - por isso NAO foi implementado (nao e
+ * mais um TODO esquecido, e uma omissao deliberada, condicionada ao
+ * regime tributario real da Tornearia Castro ser Simples Nacional -
+ * ainda nao confirmado com o contador).
  *
- * NAO EMITIR EM PRODUCAO sem: (1) confirmar a estrutura da DPS contra o
- * XSD oficial, (2) testar de ponta a ponta em homologacao, (3) resolver
- * os campos de IBS/CBS.
+ * O que CONTINUA sem confirmacao nesta sessao:
+ * - Codigo de tributacao nacional do ISSQN (cTribNac, 6 digitos,
+ *   LC 116/03) para os servicos da Tornearia Castro - variavel de
+ *   ambiente obrigatoria, sem default (ver codigoTribNacObrigatorio()).
+ * - Regime do Simples Nacional real da empresa (opSimpNac) - default
+ *   conservador "nao optante", ajustavel por env var.
+ * - A URL de PRODUCAO do SEFIN Nacional (emissao) foi apenas inferida
+ *   por padrao (trocando o dominio de homologacao) - revalidar antes de
+ *   trocar NFSE_NACIONAL_AMBIENTE para "producao".
+ * - Formato exato do corpo aceito pelo endpoint POST /nfse (texto puro
+ *   gzip+base64 vs. JSON com esse valor num campo) - inferido de relato
+ *   tecnico de terceiro, nao de fonte oficial.
+ * - Caminho exato dos campos de retorno (chave de acesso, numero) na
+ *   resposta de sucesso.
+ *
+ * Outros fatos (transporte): documento fiscal agora se chama DPS (nao
+ * mais RPS); corpo da requisicao e o XML da DPS assinado, comprimido em
+ * GZip e codificado em Base64 (nao e mais SOAP puro como no BHISS);
+ * autenticacao via certificado digital ICP-Brasil com mTLS (mesmo
+ * .pfx/.pem do BHISS); emissao sincrona via POST {SEFIN_BASE}/nfse;
+ * consulta por chave de acesso via GET {ADN_BASE}/NFSe/{chaveAcesso}.
+ *
+ * NAO EMITIR EM PRODUCAO sem: (1) confirmar cTribNac e o regime
+ * tributario real com o contador, (2) testar de ponta a ponta em
+ * homologacao, (3) confirmar a URL de producao do SEFIN Nacional.
  */
 
 const AMBIENTE = process.env.NFSE_NACIONAL_AMBIENTE === "producao" ? "producao" : "homologacao";
@@ -142,6 +150,38 @@ function escaparXml(valor: string): string {
     .replace(/"/g, "&quot;");
 }
 
+// Situacao perante o Simples Nacional (prest/regTrib/opSimpNac):
+// 1-Nao optante, 2-Optante MEI, 3-Optante ME/EPP. NAO sabemos o regime
+// real da Tornearia Castro nesta sessao - confirmar com o contador antes
+// de homologar. Default conservador: "1" (nao optante).
+const OP_SIMPLES_NACIONAL = process.env.NFSE_BH_OP_SIMPLES_NACIONAL || "1";
+// Regime Especial de Tributacao Municipal (prest/regTrib/regEspTrib):
+// 0-Nenhum (default), 1-Ato Cooperado, 2-Estimativa, 3-ME Municipal,
+// 4-Notario/Registrador, 5-Autonomo, 6-Sociedade de Profissionais, 9-Outros.
+const REGIME_ESPECIAL_TRIBUTACAO = process.env.NFSE_BH_REGIME_ESPECIAL || "0";
+
+// serv/cServ/cTribNac (obrigatorio, 1-1, 6 digitos): codigo de
+// tributacao nacional do ISSQN conforme LC 116/03, listado na aba
+// "MUN.INCID_INFO.SERV." do ANEXO_I oficial (nao lida nesta sessao) ou
+// no ANEXO_B (Lista Nacional NBS2). Os servicos da Tornearia Castro
+// (usinagem/torno CNC, solda de recomposicao, retifica, fresamento)
+// provavelmente caem no grupo 14 - "Servicos relativos a bens de
+// terceiros" (ex: 14.01 conserto/manutencao, 14.05
+// restauracao/recondicionamento) - mas isso e uma hipotese, NAO uma
+// confirmacao. Deliberadamente NAO tem default: emitir sem confirmar
+// esse codigo classificaria o servico errado perante o fisco.
+function codigoTribNacObrigatorio(): string {
+  const valor = process.env.NFSE_BH_CODIGO_TRIB_NACIONAL;
+  if (!valor) {
+    throw new Error(
+      "NFSE_BH_CODIGO_TRIB_NACIONAL nao configurada - confirmar o codigo de tributacao " +
+        "nacional do ISSQN (6 digitos, LC 116/03) para os servicos da Tornearia Castro " +
+        "antes de emitir. Ver ANEXO_B (Lista Nacional NBS2) em gov.br/nfse.",
+    );
+  }
+  return valor;
+}
+
 function montarXmlDps(params: {
   numeroDps: number;
   serieDps: string;
@@ -151,36 +191,68 @@ function montarXmlDps(params: {
 }): string {
   const { numeroDps, serieDps, req, inscricaoMunicipal, cnpjPrestador } = params;
   const agora = new Date().toISOString();
-  const idDps = `DPS${CODIGO_MUNICIPIO_BH}${cnpjPrestador}${serieDps.padStart(5, "0")}${String(numeroDps).padStart(15, "0")}`;
+
+  // Formato do Id confirmado no ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe-v1.01
+  // (baixado de gov.br/nfse em 2026-09-08): "DPS" + Cod.Mun.(7) +
+  // Tipo Inscricao Federal(1) + Inscricao Federal(14) + Serie(5) + Numero(15)
+  // = 45 caracteres. Tipo de Inscricao Federal aqui e sempre "2" (CNPJ),
+  // ja que o prestador (Tornearia Castro) e pessoa juridica.
+  const idDps =
+    `DPS${CODIGO_MUNICIPIO_BH}2${cnpjPrestador.padStart(14, "0")}` +
+    `${serieDps.padStart(5, "0")}${String(numeroDps).padStart(15, "0")}`;
+
   const documentoTomadorLimpo = req.clienteDocumento.replace(/\D/g, "");
   const tagDocumentoTomador =
     documentoTomadorLimpo.length > 11
       ? `<CNPJ>${documentoTomadorLimpo}</CNPJ>`
       : `<CPF>${documentoTomadorLimpo}</CPF>`;
 
-  // TODO(validar contra XSD oficial DPS_v1.xsd - nao acessado nesta
-  // sessao): nomes exatos das tags abaixo (prest/toma/serv/valores/trib)
-  // seguem o padrao geral conhecido do layout nacional, NAO foram
-  // confirmados campo a campo. O <Id> do infDPS tambem precisa bater
-  // exatamente com a regra de 45 caracteres da Nota Tecnica oficial -
-  // o formato usado aqui e uma aproximacao.
-  // TODO(Reforma Tributaria, desde ago/2026): campos de IBS/CBS
-  // (aliquota de teste 0,1% IBS + 0,9% CBS) ainda NAO implementados.
+  // Estrutura confirmada campo a campo contra o ANEXO_I oficial (aba
+  // "LEIAUTE DPS_NFS-e", caminho NFSe/infNFSe/DPS/infDPS/...) baixado de
+  // gov.br/nfse em 2026-09-08 - substitui a aproximacao anterior.
+  //
+  // O grupo IBSCBS (DPS/infDPS/IBSCBS, ocorrencia 0-1) foi
+  // deliberadamente OMITIDO: o proprio anexo oficial afirma "Para
+  // optantes do Simples Nacional, os grupos IBSCBS so serao
+  // obrigatorios a partir de 2027" - e a Tornearia Castro e uma empresa
+  // pequena, provavelmente Simples Nacional (a confirmar com o
+  // contador). Se ela NAO for optante do Simples, revisar isso antes de
+  // homologar.
   return (
     `<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">` +
     `<infDPS Id="${idDps}">` +
     `<tpAmb>${TP_AMBIENTE}</tpAmb>` +
     `<dhEmi>${agora}</dhEmi>` +
+    `<verAplic>1.0.0</verAplic>` +
     `<serie>${serieDps}</serie>` +
     `<nDPS>${numeroDps}</nDPS>` +
     `<dCompet>${agora.slice(0, 10)}</dCompet>` +
-    `<tpEmit>1</tpEmit>` +
+    `<tpEmit>1</tpEmit>` + // 1 = Prestador emite a propria DPS
     `<cLocEmi>${CODIGO_MUNICIPIO_BH}</cLocEmi>` +
-    `<prest><CNPJ>${cnpjPrestador}</CNPJ><IM>${inscricaoMunicipal}</IM></prest>` +
+    `<prest>` +
+    `<CNPJ>${cnpjPrestador}</CNPJ>` +
+    `<IM>${inscricaoMunicipal}</IM>` +
+    `<regTrib>` +
+    `<opSimpNac>${OP_SIMPLES_NACIONAL}</opSimpNac>` +
+    `<regEspTrib>${REGIME_ESPECIAL_TRIBUTACAO}</regEspTrib>` +
+    `</regTrib>` +
+    `</prest>` +
     `<toma>${tagDocumentoTomador}<xNome>${escaparXml(req.clienteNome)}</xNome></toma>` +
-    `<serv><xDescServ>${escaparXml(req.discriminacaoServico)}</xDescServ></serv>` +
-    `<valores><vServPrest><vServ>${req.valorServico.toFixed(2)}</vServ></vServPrest>` +
-    `<trib><tribMun><pAliq>${req.aliquotaIss}</pAliq></tribMun></trib></valores>` +
+    `<serv>` +
+    `<locPrest><cLocPrestacao>${CODIGO_MUNICIPIO_BH}</cLocPrestacao></locPrest>` +
+    `<cServ>` +
+    `<cTribNac>${codigoTribNacObrigatorio()}</cTribNac>` +
+    `<xDescServ>${escaparXml(req.discriminacaoServico)}</xDescServ>` +
+    `</cServ>` +
+    `</serv>` +
+    `<valores>` +
+    `<vServPrest><vServ>${req.valorServico.toFixed(2)}</vServ></vServPrest>` +
+    `<trib><tribMun>` +
+    `<tribISSQN>1</tribISSQN>` + // 1 = Operacao tributavel (caso padrao)
+    `<tpRetISSQN>1</tpRetISSQN>` + // 1 = Nao retido
+    `<pAliq>${req.aliquotaIss}</pAliq>` +
+    `</tribMun></trib>` +
+    `</valores>` +
     `</infDPS>` +
     `</DPS>`
   );
