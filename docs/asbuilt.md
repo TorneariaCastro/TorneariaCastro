@@ -98,27 +98,29 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟣 FASE 02.5: PORTAL DO ORÇAMENTO (compartilhamento e aprovação)
-**Status:** `⏳ Aguardando` (planejada em 2026-09-09, pronta pro Atlas)
-**Progresso:** 0/9 tarefas (0%)
+**Status:** `🔄 Em Andamento` (código completo, aguardando 1 ação manual de Kleber para ficar testável)
+**Progresso:** 8/9 tarefas concluídas — falta aplicar a migration no banco (sem Supabase MCP conectado nesta sessão)
 **Objetivo:** Fechar o ciclo orçamento → cliente aprova → vira serviço, sem sair do CRM e sem retrabalho de digitação. Spec completa da Shiva em `docs/memoria/projeto.md` e `docs/memoria/moscow.md` (adendo).
-**Por que agora, fora de ordem?** Fase 02 está travada esperando o código de tributação nacional (dado que só Kleber/contador resolvem, não é trabalho de código). Em vez de deixar o Atlas ocioso, esta fase entra na frente — aprovada por Kleber em 2026-09-09.
+**Por que agora, fora de ordem?** Fase 02 está travada esperando o código de tributação nacional (dado que só Kleber/contador resolvem, não é trabalho de código). Em vez de deixar o Atlas ocioso, esta fase entrou na frente — aprovada por Kleber em 2026-09-09.
 
 #### Tarefas (plano técnico completo em `docs/memoria/plano-tarefas.md`):
-- [ ] 1. Migration `0004_portal_orcamento.sql` — token de compartilhamento, aprovado_em, recusado_em, link_expira_em em `ordens_servico` (sem alteração de RLS)
-- [ ] 2. `getOrdemServico(id)` em `src/lib/data/ordens-servico.ts`
-- [ ] 3. Página de detalhe `src/app/(app)/ordens-servico/[id]/page.tsx` (não existe ainda — só lista + dialog)
-- [ ] 4. Server Action `compartilharOrcamento` (gera/renova link, exige administrador)
-- [ ] 5. Server Action `converterEmServico` (só se aprovado, exige administrador)
-- [ ] 6. Rota pública `src/app/orcamento/[token]/page.tsx` — busca via `createAdminClient()` (service role), nunca via RLS/anon
-- [ ] 7. Server Actions públicas `aprovarOrcamento` / `recusarOrcamento` (sem sessão, idempotentes)
-- [ ] 8. Liberar `/orcamento` no `src/proxy.ts`
-- [ ] 9. Botão de compartilhar via WhatsApp (`wa.me`, grátis, sem API paga)
+- [ ] 1. Migration `0004_portal_orcamento.sql` — escrita, **não aplicada** (Supabase MCP não conectado nesta sessão; mesmo padrão das migrations 0001-0003, Kleber aplica via SQL Editor)
+- [x] 2. `getOrdemServico(id)` em `src/lib/data/ordens-servico.ts`
+- [x] 3. Página de detalhe `src/app/(app)/ordens-servico/[id]/page.tsx` (não existia — criada; link adicionado na lista)
+- [x] 4. Server Action `compartilharOrcamento` (gera/renova link por 30 dias, exige administrador)
+- [x] 5. Server Action `converterEmServico` (só se aprovado e ainda `orcado`, exige administrador)
+- [x] 6. Rota pública `src/app/orcamento/[token]/page.tsx` — busca via `createAdminClient()` (service role), nunca via RLS/anon
+- [x] 7. Server Actions públicas `aprovarOrcamento` / `recusarOrcamento` (sem sessão, idempotentes — checam token + validade + ainda não decidido)
+- [x] 8. Liberado `/orcamento` no `src/proxy.ts`
+- [x] 9. Botão de compartilhar via WhatsApp (`wa.me`, grátis, sem API paga) + copiar link
 
-**Decisão de arquitetura (Hades):** primeira rota pública do sistema — não abre RLS para `anon`, usa o client de service role já existente (`src/lib/supabase/admin.ts`) e valida o token na aplicação. Nota de segurança registrada para o Kerberos revisar antes do deploy.
+**Decisão de arquitetura (Hades), confirmada na execução:** primeira rota pública do sistema — não abre RLS para `anon`, usa o client de service role já existente (`src/lib/supabase/admin.ts`) e valida o token na aplicação. Nenhuma política de RLS nova foi criada. Nota de segurança registrada para o Kerberos revisar antes do deploy.
 
-**Testável:** Compartilhar gera link → aba anônima mostra o orçamento → aprovar trava e libera "Converter em Serviço" → status muda pra `em_execucao`.
-**Notas:** Sem custo novo — nem WhatsApp (link `wa.me` manual) nem infraestrutura nova. Regra de negócio confirmada com Kleber: aprovar/recusar/converter é ação exclusiva de `administrador`, igual o resto do sistema.
-**Último trabalho:** Ainda não iniciado.
+**Desvio encontrado durante a execução:** o plano da Hades previa "travar a edição de valores após aprovação" — mas o Atlas descobriu que **não existe edição de itens de mão de obra/materiais na UI hoje** (o dialog em `ordem-servico-form-dialog.tsx` só cria OS nova; os itens não têm tela de cadastro/edição própria ainda, é uma lacuna anterior a esta feature). Como não há o que travar, esse ponto do plano não se aplicou — nada foi construído além do escopo pedido. Registrado aqui para Hades decidir se isso vira uma tarefa própria depois.
+
+**Testável:** Assim que Kleber aplicar a migration — compartilhar gera link → aba anônima mostra o orçamento → aprovar libera "Converter em Serviço" → status muda pra `em_execucao`. `npm run build` e `npx tsc --noEmit` já rodaram limpos com o código atual.
+**Notas:** Sem custo novo — nem WhatsApp (link `wa.me` manual) nem infraestrutura nova. Adicionada env var `NEXT_PUBLIC_SITE_URL` em `.env.local` (não commitada) — falta replicar nas env vars do projeto Vercel (`telascastroclaudia@gmail.com`) antes do link público funcionar em produção. Regra de negócio: aprovar/recusar/converter é ação exclusiva de `administrador`, igual o resto do sistema.
+**Último trabalho:** Commit `c445ce1` em `dev`, push feito. Aguardando: (1) Kleber aplicar a migration `0004_portal_orcamento.sql` no SQL Editor do Supabase, (2) Kleber ou quem tiver acesso à conta Vercel de deploy adicionar `NEXT_PUBLIC_SITE_URL` nas env vars de produção/preview.
 
 ---
 
