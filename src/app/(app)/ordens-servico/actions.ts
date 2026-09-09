@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth/session";
+import type { StatusOrdemServico } from "@/lib/types";
 
 export interface CriarOrdemServicoState {
   error?: string;
@@ -226,6 +227,51 @@ export async function removerItem(
   const tabela = tipo === "mao_de_obra" ? "itens_mao_de_obra" : "itens_materiais";
   const { error } = await supabase.from(tabela).delete().eq("id", itemId);
   if (error) return { error: "Não foi possível remover o lançamento." };
+
+  revalidarOrdem(ordemServicoId);
+  return {};
+}
+
+export interface StatusState {
+  error?: string;
+}
+
+/** O que pode virar o quê. Impede pular etapas ou reviver uma OS encerrada. */
+const TRANSICOES_PERMITIDAS: Record<StatusOrdemServico, StatusOrdemServico[]> = {
+  rascunho: ["orcado", "cancelado"],
+  orcado: ["em_execucao", "cancelado"],
+  em_execucao: ["pronto", "cancelado"],
+  pronto: ["faturado", "cancelado"],
+  faturado: [],
+  cancelado: [],
+};
+
+export async function avancarStatus(
+  ordemServicoId: string,
+  novoStatus: StatusOrdemServico,
+): Promise<StatusState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) return { error: "Consultores não podem alterar o status da ordem de serviço." };
+
+  const supabase = await createClient();
+  const { data: os } = await supabase
+    .from("ordens_servico")
+    .select("status")
+    .eq("id", ordemServicoId)
+    .maybeSingle();
+
+  if (!os) return { error: "Ordem de serviço não encontrada." };
+
+  const permitidos = TRANSICOES_PERMITIDAS[os.status as StatusOrdemServico] ?? [];
+  if (!permitidos.includes(novoStatus)) {
+    return { error: "Essa mudança de status não é permitida a partir da situação atual." };
+  }
+
+  const atualizacao: Record<string, unknown> = { status: novoStatus };
+  if (novoStatus === "pronto") atualizacao.data_conclusao = new Date().toISOString();
+
+  const { error } = await supabase.from("ordens_servico").update(atualizacao).eq("id", ordemServicoId);
+  if (error) return { error: "Não foi possível alterar o status." };
 
   revalidarOrdem(ordemServicoId);
   return {};

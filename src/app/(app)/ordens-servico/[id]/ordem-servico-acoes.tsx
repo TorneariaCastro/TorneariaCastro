@@ -1,16 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowRightCircle, Copy, MessageCircle, Share2 } from "lucide-react";
+import { Copy, MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { compartilharOrcamento, converterEmServico } from "../actions";
+import { compartilharOrcamento } from "../actions";
 
 interface OrdemServicoAcoesProps {
   ordemServicoId: string;
-  status: string;
-  aprovado: boolean;
   clienteNome: string;
   clienteTelefone: string;
 }
@@ -22,13 +20,7 @@ function montarLinkWhatsapp(telefone: string, clienteNome: string, link: string)
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 }
 
-export function OrdemServicoAcoes({
-  ordemServicoId,
-  status,
-  aprovado,
-  clienteNome,
-  clienteTelefone,
-}: OrdemServicoAcoesProps) {
+export function OrdemServicoAcoes({ ordemServicoId, clienteNome, clienteTelefone }: OrdemServicoAcoesProps) {
   const [pending, startTransition] = useTransition();
   const [link, setLink] = useState<string>();
 
@@ -44,30 +36,10 @@ export function OrdemServicoAcoes({
     });
   }
 
-  function handleConverter() {
-    startTransition(async () => {
-      const result = await converterEmServico(ordemServicoId);
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Ordem de serviço convertida para Em Execução.");
-    });
-  }
-
   async function copiarLink() {
     if (!link) return;
     await navigator.clipboard.writeText(link);
     toast.success("Link copiado.");
-  }
-
-  if (aprovado && status === "orcado") {
-    return (
-      <Button className="gap-2" disabled={pending} onClick={handleConverter}>
-        <ArrowRightCircle className="size-4" />
-        {pending ? "Convertendo..." : "Converter em Serviço"}
-      </Button>
-    );
   }
 
   return (

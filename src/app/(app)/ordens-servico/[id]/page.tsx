@@ -10,6 +10,7 @@ import { formatarData, formatarMoeda } from "@/lib/format";
 import { getSessao } from "@/lib/auth/session";
 import { OrdemServicoAcoes } from "./ordem-servico-acoes";
 import { ItensLancamentos } from "./itens-lancamentos";
+import { StatusAcoes } from "./status-acoes";
 
 export default async function OrdemServicoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -87,6 +88,21 @@ export default async function OrdemServicoDetalhePage({ params }: { params: Prom
         </CardContent>
       </Card>
 
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Andamento do serviço</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StatusAcoes
+              ordemServicoId={os.id}
+              status={os.status}
+              aprovadoPeloCliente={Boolean(os.aprovadoEm)}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {isAdmin && cliente && (
         <Card>
           <CardHeader>
@@ -95,8 +111,6 @@ export default async function OrdemServicoDetalhePage({ params }: { params: Prom
           <CardContent>
             <OrdemServicoAcoes
               ordemServicoId={os.id}
-              status={os.status}
-              aprovado={Boolean(os.aprovadoEm)}
               clienteNome={cliente.nome}
               clienteTelefone={cliente.telefone}
             />
