@@ -5,22 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth/session";
 import { sefinNacionalNfseService as nfseService } from "@/lib/services/nfse/sefin-nacional-nfse-service";
 
-/**
- * Alíquota do ISS em fração (5% = 0.05). Vem de configuração porque é dado
- * fiscal do contribuinte — errar aqui declara imposto errado, então não tem
- * valor padrão: sem configurar, a emissão para com erro claro.
- */
-function aliquotaIssConfigurada(): number {
-  const percentual = Number(String(process.env.NFSE_BH_ALIQUOTA_ISS ?? "").replace(",", "."));
-  if (!Number.isFinite(percentual) || percentual <= 0) {
-    throw new Error(
-      "Alíquota do ISS não configurada (NFSE_BH_ALIQUOTA_ISS). " +
-        "Confirme o percentual com o contador antes de emitir.",
-    );
-  }
-  return percentual / 100;
-}
-
 export interface EmitirNfseInput {
   ordemServicoId: string;
   clienteNome: string;
@@ -56,11 +40,13 @@ export async function emitirNfse(input: EmitirNfseInput) {
     );
   }
 
+  // A alíquota do ISS não é enviada: BH pertence ao Sistema Nacional, então a
+  // Receita aplica a alíquota parametrizada pela Prefeitura e devolve o ISS
+  // apurado na nota autorizada. O valor abaixo é só referência interna.
   const resultado = await nfseService.emitir({
     ...input,
     clienteDocumento: documento,
     clienteNome: clienteDaOs?.nome ?? input.clienteNome,
-    aliquotaIss: aliquotaIssConfigurada(),
   });
 
   const { data: existente } = await supabase

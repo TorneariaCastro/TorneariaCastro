@@ -165,6 +165,30 @@ const REGIME_ESPECIAL_TRIBUTACAO = process.env.NFSE_BH_REGIME_ESPECIAL || "0";
 // restauracao/recondicionamento) - mas isso e uma hipotese, NAO uma
 // confirmacao. Deliberadamente NAO tem default: emitir sem confirmar
 // esse codigo classificaria o servico errado perante o fisco.
+/**
+ * O grupo totTrib é um "choice" que muda conforme o regime do emitente
+ * (regra oficial E0712/E0710 do anexo):
+ *  - ME/EPP (opSimpNac=3): informa pTotTribSN, e indTotTrib NUNCA pode ir;
+ *  - MEI (2): informa indTotTrib, e pTotTribSN NUNCA pode ir;
+ *  - Não optante (1): indTotTrib.
+ * O percentual do Simples é dado fiscal do contribuinte — sem valor padrão.
+ */
+function tagTotalTributos(): string {
+  if (OP_SIMPLES_NACIONAL !== "3") {
+    return `<indTotTrib>0</indTotTrib>`;
+  }
+  const percentual = String(process.env.NFSE_BH_PERC_TOTAL_TRIB_SN ?? "").replace(",", ".");
+  const numero = Number(percentual);
+  if (!Number.isFinite(numero) || numero <= 0) {
+    throw new Error(
+      "NFSE_BH_PERC_TOTAL_TRIB_SN nao configurada. Para optante do Simples Nacional " +
+        "ME/EPP a NFS-e exige o percentual total de tributos do Simples (pTotTribSN) - " +
+        "confirmar a aliquota efetiva com o contador.",
+    );
+  }
+  return `<pTotTribSN>${numero.toFixed(2)}</pTotTribSN>`;
+}
+
 function codigoTribNacObrigatorio(): string {
   const valor = process.env.NFSE_BH_CODIGO_TRIB_NACIONAL;
   if (!valor) {
@@ -254,11 +278,12 @@ function montarXmlDps(params: {
     `<trib><tribMun>` +
     `<tribISSQN>1</tribISSQN>` + // 1 = Operacao tributavel (caso padrao)
     `<tpRetISSQN>1</tpRetISSQN>` + // 1 = Nao retido
-    // pAliq é PERCENTUAL (5% = "5.00"), não fração. A aplicação trabalha com
-    // fração (0.05), então converte aqui — enviar 0.05 declararia 0,05% de ISS.
-    `<pAliq>${(req.aliquotaIss * 100).toFixed(2)}</pAliq>` +
+    // pAliq é opcional (ocorrência 0-1) e, quando o município pertence ao
+    // Sistema Nacional — caso de BH —, a alíquota já está parametrizada lá e
+    // é aplicada pela própria Receita. Informar por conta própria só cria
+    // risco de divergência, então deliberadamente não enviamos.
     `</tribMun>` +
-    `<totTrib><indTotTrib>0</indTotTrib></totTrib>` +
+    `<totTrib>${tagTotalTributos()}</totTrib>` +
     `</trib>` +
     `</valores>` +
     `</infDPS>` +
@@ -531,6 +556,10 @@ function interpretarRespostaJson(
 
   let numero = "";
   let codigoVerificacao = "";
+  // Quem calcula o ISS é a Receita, com a alíquota que a Prefeitura
+  // parametrizou. Lemos o valor de volta da nota autorizada em vez de
+  // recalcular por conta própria.
+  let issApurado: number | null = null;
   if (corpo.nfseXmlGZipB64) {
     try {
       const xmlNfse = gunzipBase64(corpo.nfseXmlGZipB64);
@@ -538,6 +567,8 @@ function interpretarRespostaJson(
       const texto = JSON.stringify(nfse);
       numero = texto.match(/"nNFSe":"?(\d+)"?/)?.[1] ?? "";
       codigoVerificacao = texto.match(/"cVerif"[^"]*"([^"]+)"/)?.[1] ?? "";
+      const iss = texto.match(/"vISSQN":"?([\d.]+)"?/)?.[1];
+      if (iss) issApurado = Number(iss);
     } catch {
       // A chave de acesso já identifica a nota; o XML é complementar.
     }
@@ -550,7 +581,7 @@ function interpretarRespostaJson(
     status: "emitida",
     linkPdf: `${SEFIN_BASE_URL}/DANFSe/${corpo.chaveAcesso}`,
     dataEmissao: corpo.dataHoraProcessamento ?? new Date().toISOString(),
-    valorIss,
+    valorIss: issApurado ?? valorIss,
   };
 }
 
