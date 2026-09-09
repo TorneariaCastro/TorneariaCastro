@@ -9,19 +9,31 @@ import { PIPELINE_ORDEM_SERVICO, calcularValorTotal } from "@/lib/types";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { getSessao } from "@/lib/auth/session";
 
-export default async function OrdensServicoPage() {
-  const [ordensServico, clientes, { isAdmin }] = await Promise.all([
+export default async function OrdensServicoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const [{ status: filtro }, ordensServico, clientes, { isAdmin }] = await Promise.all([
+    searchParams,
     listOrdensServico(),
     listClientes(),
     getSessao(),
   ]);
+
+  const statusAtivo = PIPELINE_ORDEM_SERVICO.find((s) => s === filtro);
+  const ordensVisiveis = statusAtivo ? ordensServico.filter((os) => os.status === statusAtivo) : ordensServico;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Ordens de Serviço</h1>
-          <p className="text-sm text-muted-foreground">{ordensServico.length} ordens registradas</p>
+          <p className="text-sm text-muted-foreground">
+            {statusAtivo
+              ? `${ordensVisiveis.length} de ${ordensServico.length} ordens · filtrando por status`
+              : `${ordensServico.length} ordens registradas`}
+          </p>
         </div>
         {isAdmin && <OrdemServicoFormDialog modo="os" clientes={clientes} />}
       </div>
@@ -29,22 +41,40 @@ export default async function OrdensServicoPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {PIPELINE_ORDEM_SERVICO.map((status) => {
           const quantidade = ordensServico.filter((os) => os.status === status).length;
+          const ativo = statusAtivo === status;
           return (
-            <Card key={status} className="py-4">
-              <CardContent className="space-y-1 px-4">
-                <StatusBadge status={status} />
-                <p className="text-xl font-semibold tabular-nums">{quantidade}</p>
-              </CardContent>
-            </Card>
+            <Link
+              key={status}
+              href={ativo ? "/ordens-servico" : `/ordens-servico?status=${status}`}
+              aria-pressed={ativo}
+              title={ativo ? "Clique para mostrar todas" : "Clique para ver só estas"}
+            >
+              <Card
+                className={`py-4 transition-colors hover:bg-muted/50 ${ativo ? "ring-2 ring-primary" : ""}`}
+              >
+                <CardContent className="space-y-1 px-4">
+                  <StatusBadge status={status} />
+                  <p className="text-xl font-semibold tabular-nums">{quantidade}</p>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>
 
+      {statusAtivo && (
+        <Link href="/ordens-servico" className="inline-block text-sm text-muted-foreground hover:text-foreground">
+          ← Mostrar todas as ordens
+        </Link>
+      )}
+
       <Card className="py-0">
         <CardContent className="px-0">
-          {ordensServico.length === 0 ? (
+          {ordensVisiveis.length === 0 ? (
             <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-              Nenhuma ordem de serviço registrada ainda.
+              {statusAtivo
+                ? "Nenhuma ordem de serviço nesta situação."
+                : "Nenhuma ordem de serviço registrada ainda."}
             </p>
           ) : (
             <Table>
@@ -59,7 +89,7 @@ export default async function OrdensServicoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ordensServico.map((os) => (
+                {ordensVisiveis.map((os) => (
                   <TableRow key={os.id} className="cursor-pointer">
                     <TableCell className="font-medium">
                       <Link href={`/ordens-servico/${os.id}`} className="hover:underline">
