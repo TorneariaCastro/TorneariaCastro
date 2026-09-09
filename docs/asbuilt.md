@@ -2,7 +2,7 @@
 
 **Descrição:** Sistema interno de gestão da Tornearia Castro (clientes, ordens de serviço, financeiro), hoje um protótipo funcional sem persistência real. Objetivo: virar sistema de produção completo, sem faseamento de escopo (Kleber decidiu incluir tudo na v1).
 **Stack:** GitHub + Supabase + Vercel + Next.js 16 (App Router) + shadcn/ui
-**Última atualização:** 2026-09-07 (Fase 01 encerrada; Fase 02 — NFS-e real BH — planejada pelo Hades e pronta pro Atlas)
+**Última atualização:** 2026-09-09 (Fase 01 encerrada; Fase 02 — NFS-e real BH — travada esperando código de tributação de Kleber; Fase 02.5 — Portal do Orçamento — nova, planejada pelo Hades e pronta pro Atlas)
 
 ---
 
@@ -97,6 +97,31 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 
 ---
 
+### 🟣 FASE 02.5: PORTAL DO ORÇAMENTO (compartilhamento e aprovação)
+**Status:** `⏳ Aguardando` (planejada em 2026-09-09, pronta pro Atlas)
+**Progresso:** 0/9 tarefas (0%)
+**Objetivo:** Fechar o ciclo orçamento → cliente aprova → vira serviço, sem sair do CRM e sem retrabalho de digitação. Spec completa da Shiva em `docs/memoria/projeto.md` e `docs/memoria/moscow.md` (adendo).
+**Por que agora, fora de ordem?** Fase 02 está travada esperando o código de tributação nacional (dado que só Kleber/contador resolvem, não é trabalho de código). Em vez de deixar o Atlas ocioso, esta fase entra na frente — aprovada por Kleber em 2026-09-09.
+
+#### Tarefas (plano técnico completo em `docs/memoria/plano-tarefas.md`):
+- [ ] 1. Migration `0004_portal_orcamento.sql` — token de compartilhamento, aprovado_em, recusado_em, link_expira_em em `ordens_servico` (sem alteração de RLS)
+- [ ] 2. `getOrdemServico(id)` em `src/lib/data/ordens-servico.ts`
+- [ ] 3. Página de detalhe `src/app/(app)/ordens-servico/[id]/page.tsx` (não existe ainda — só lista + dialog)
+- [ ] 4. Server Action `compartilharOrcamento` (gera/renova link, exige administrador)
+- [ ] 5. Server Action `converterEmServico` (só se aprovado, exige administrador)
+- [ ] 6. Rota pública `src/app/orcamento/[token]/page.tsx` — busca via `createAdminClient()` (service role), nunca via RLS/anon
+- [ ] 7. Server Actions públicas `aprovarOrcamento` / `recusarOrcamento` (sem sessão, idempotentes)
+- [ ] 8. Liberar `/orcamento` no `src/proxy.ts`
+- [ ] 9. Botão de compartilhar via WhatsApp (`wa.me`, grátis, sem API paga)
+
+**Decisão de arquitetura (Hades):** primeira rota pública do sistema — não abre RLS para `anon`, usa o client de service role já existente (`src/lib/supabase/admin.ts`) e valida o token na aplicação. Nota de segurança registrada para o Kerberos revisar antes do deploy.
+
+**Testável:** Compartilhar gera link → aba anônima mostra o orçamento → aprovar trava e libera "Converter em Serviço" → status muda pra `em_execucao`.
+**Notas:** Sem custo novo — nem WhatsApp (link `wa.me` manual) nem infraestrutura nova. Regra de negócio confirmada com Kleber: aprovar/recusar/converter é ação exclusiva de `administrador`, igual o resto do sistema.
+**Último trabalho:** Ainda não iniciado.
+
+---
+
 ### 🟠 FASE 03: PAGAMENTO REAL
 **Status:** `⏳ Aguardando`
 **Progresso:** 0/3 tarefas (0%)
@@ -139,3 +164,4 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 | 2026-08-26 | Atlas inicializou o git local, renomeou branch padrão para `main`, criou `dev`/`hml`, e publicou o repositório em github.com/TorneariaCastro/tornearia-castro — a conta `gh` já autenticada era a certa, sem precisar pedir nada a Kleber. Fase 01 aguardando credenciais Vercel/Supabase da conta separada. |
 | 2026-08-26 | Atlas implementou schema+RLS (SQL pronto, não aplicado), Supabase Auth, proxy de rota, e substituiu todos os mocks por dados reais (commits `0f16a06`, `c728d0c` em `dev`). Build/lint/typecheck OK. Dois bloqueios ficaram para Kleber resolver: aplicar a migration (sem Management API token) e autorizar `vercel link` (negado pelo classificador de permissão). |
 | 2026-09-07 | Kleber pediu a ativação da NFS-e real de BH. Shiva conduziu discovery focada (caminho direto vs provedor, certificado, cadastro municipal, homologação) e documentou a decisão em `docs/memoria/integracao-nfse-bh.md`. Hades recebeu a spec, confirmou via pesquisa web os endpoints do webservice BHISS Digital (homologação e produção) e criou o plano técnico de 8 passos em `plano-tarefas.md` para o Atlas. |
+| 2026-09-09 | Kleber pediu compartilhamento de orçamento com clientes (link + WhatsApp + aprovação + conversão em serviço). Shiva conduziu discovery, fez MoSCoW da feature e documentou em `projeto.md`/`moscow.md`. Hades recebeu a spec, decidiu encaixar como Fase 02.5 (aproveitando a Fase 02 travada), definiu a arquitetura de segurança da rota pública (service role + validação por token, sem abrir RLS) e escreveu o plano técnico de 9 passos em `plano-tarefas.md` para o Atlas. |

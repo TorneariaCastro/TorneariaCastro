@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
@@ -59,8 +60,12 @@ export default async function OrdensServicoPage() {
               </TableHeader>
               <TableBody>
                 {ordensServico.map((os) => (
-                  <TableRow key={os.id}>
-                    <TableCell className="font-medium">{os.numero}</TableCell>
+                  <TableRow key={os.id} className="cursor-pointer">
+                    <TableCell className="font-medium">
+                      <Link href={`/ordens-servico/${os.id}`} className="hover:underline">
+                        {os.numero}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{os.clienteNome}</TableCell>
                     <TableCell className="hidden max-w-[280px] truncate text-muted-foreground lg:table-cell">
                       {os.descricaoServico}

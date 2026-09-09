@@ -17,3 +17,25 @@ _Nenhum item adiado nesta rodada._
 
 ## 📦 WON'T HAVE (Futuro)
 _Nenhum item adiado nesta rodada._
+
+---
+
+## Adendo — Compartilhamento e Aprovação de Orçamento (2026-09-09)
+
+> Feature adicionada após validação de escopo com Kleber, quebrada em MoSCoW própria.
+
+### 📦 MUST HAVE
+- [ ] Link público de orçamento (token único, somente leitura, layout profissional)
+- [ ] Botões Aprovar / Recusar na página pública, com data/hora registrada e trava de edição após aprovação
+- [ ] Botão "Converter em Serviço" no CRM, disponível quando a OS está aprovada, avança status para `em_execucao`
+- [ ] Botão de compartilhar que copia o link e abre o WhatsApp do cliente com mensagem pronta (`wa.me`, sem custo)
+
+### 📦 SHOULD HAVE
+- [ ] Expiração do link público (ex: 30 dias)
+
+### 📦 COULD HAVE
+- [ ] Histórico de visualizações do link (quem/quando abriu)
+
+### 📦 WON'T HAVE (por agora)
+- [ ] Envio automático via WhatsApp Business API (custo mensal + aprovação Meta)
+- [ ] Assinatura digital com validade jurídica formal

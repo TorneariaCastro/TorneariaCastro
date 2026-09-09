@@ -2,7 +2,8 @@
 
 ## ÍNDICE
 - FASE 01: FUNDAÇÃO (concluída — ver seções abaixo)
-- FASE 02: NFS-E REAL — BELO HORIZONTE (abaixo, no fim do arquivo)
+- FASE 02: NFS-E REAL — BELO HORIZONTE (travada esperando código de tributação de Kleber)
+- FASE 02.5: PORTAL DO ORÇAMENTO — compartilhamento, aprovação e conversão (abaixo, no fim do arquivo)
 
 ---
 
@@ -359,3 +360,96 @@ Erro de resposta do webservice (SOAP Fault) = documentar a mensagem exata da pre
 ## PASSO 8 — Relatório obrigatório
 
 Formato padrão do Hades (STATUS / STEPS EXECUTADOS / OUTPUT DO TERMINAL / ESTADO ATUAL / ERROS ENCONTRADOS), incluindo explicitamente: qual versão de layout ABRASF foi confirmada no Passo 1, e se ela bateu com o que este plano presumiu.
+
+---
+
+# Plano de Tarefas — FASE 02.5: PORTAL DO ORÇAMENTO (compartilhamento, aprovação e conversão)
+
+## Contexto
+
+Spec da Shiva em `docs/memoria/projeto.md` (seção "Funcionalidade Adicional: Compartilhamento e Aprovação de Orçamento") e `docs/memoria/moscow.md` (adendo). Aprovada por Kleber, incluindo a ordem de execução (entra agora, entre a Fase 02 travada e a Fase 03) e a regra de que aprovar/recusar/converter é ação exclusiva de `administrador`.
+
+**Decisão de arquitetura (Hades):** hoje TODA rota do sistema exige login (`src/proxy.ts`) e toda leitura passa por RLS (`supabase/migrations/0002_roles.sql`, política `leitura_autenticados`). A rota pública de orçamento é a primeira exceção — e ela NÃO deve furar a RLS existente. Em vez de criar uma política `anon`, a página pública busca dados usando `createAdminClient()` (`src/lib/supabase/admin.ts`, já existe, usa `service_role key`, ignora RLS por natureza) e valida o acesso **na aplicação**, comparando o token da URL com a coluna `token_compartilhamento`. RLS da tabela `ordens_servico` não muda em nada.
+
+Verificado nesta sessão (protocolo de memória cética, não presumido):
+- Já existe `src/lib/supabase/admin.ts` com `createAdminClient()` — reaproveitar, não recriar.
+- Já existe `getSessao()`/`isAdmin` em `src/lib/auth/session.ts` — reaproveitar para travar as ações administrativas.
+- **Não existe** página de detalhe de OS (`src/app/(app)/ordens-servico/[id]/page.tsx`) — só lista + dialog. Precisa ser criada; use `src/app/(app)/clientes/[id]/page.tsx` como referência de padrão (Server Component, `notFound()` se não achar, cards com `shadcn/ui`).
+- **Não existe** `getOrdemServico(id)` em `src/lib/data/ordens-servico.ts` — só `listOrdensServico()` e `listOrdensServicoPorCliente()`. Siga o padrão de `getCliente(id)` em `src/lib/data/clientes.ts` (`.eq("id", id).maybeSingle()`).
+
+## Pré-condições
+- [ ] Nenhum bloqueio — não depende da Fase 02 (NFS-e) nem de credencial nova.
+
+## PASSO 1 — Migration `0004_portal_orcamento.sql`
+
+```sql
+alter table ordens_servico
+  add column token_compartilhamento uuid not null default gen_random_uuid() unique,
+  add column aprovado_em timestamptz,
+  add column recusado_em timestamptz,
+  add column link_expira_em timestamptz;
+```
+
+Sem alteração de RLS — nenhuma política nova, nenhum acesso `anon`. `token_compartilhamento` já nasce preenchido (random, 122 bits — não é adivinhável), mas o link só é considerado válido depois que `link_expira_em` é setado (Passo 4) e enquanto `now() < link_expira_em`.
+
+## PASSO 2 — `getOrdemServico(id)` em `src/lib/data/ordens-servico.ts`
+Mesmo padrão de `getCliente`, reaproveitando `SELECT_ORDEM_SERVICO` e `toOrdemServico` já existentes no arquivo. Adicionar os 4 campos novos ao tipo `OrdemServico` (`src/lib/types/ordem-servico.ts`): `tokenCompartilhamento: string`, `aprovadoEm?: string`, `recusadoEm?: string`, `linkExpiraEm?: string`.
+
+## PASSO 3 — Página de detalhe da OS: `src/app/(app)/ordens-servico/[id]/page.tsx`
+Seguir o padrão visual de `clientes/[id]/page.tsx`: cabeçalho com número/cliente/status (`StatusBadge`), cards com itens de mão de obra e materiais, valor total (`calcularValorTotal`). Adicionar link/botão "Ver detalhes" na linha da tabela em `ordens-servico/page.tsx` apontando para essa rota (hoje a lista só abre o dialog de edição).
+
+Nesta página, área de ações condicionais (só renderiza para `isAdmin` — usar `getSessao()`):
+- OS sem `aprovado_em` e sem `recusado_em`: botão **"Compartilhar orçamento"** → chama a Server Action do Passo 4, mostra o link gerado (copiável) e um botão/link `wa.me` com a mensagem pronta.
+- OS com `aprovado_em` preenchido e `status === "orcado"`: botão **"Converter em Serviço"** → Server Action do Passo 5.
+- Mostrar visualmente `aprovado_em`/`recusado_em` quando existirem (ex: badge "Aprovado pelo cliente em dd/mm/yyyy").
+- Quando `aprovado_em` estiver preenchido, o dialog de edição de itens (`ordem-servico-form-dialog.tsx`) deve ficar desabilitado para essa OS (mostrar texto "Orçamento já aprovado pelo cliente — não é possível editar valores" no lugar do botão de editar). Não é preciso construir um fluxo de "reabrir orçamento" — fora de escopo desta fase.
+
+## PASSO 4 — Server Action `compartilharOrcamento` em `src/app/(app)/ordens-servico/actions.ts`
+- Exige `isAdmin` (mesmo padrão de `criarOrdemServico`).
+- `update ordens_servico set link_expira_em = now() + interval '30 days' where id = $1` (usa o client autenticado normal — RLS já permite update de administrador via `atualizacao_administrador`).
+- Retorna a URL pública montada como `${NEXT_PUBLIC_SITE_URL ou request origin}/orcamento/${tokenCompartilhamento}`. Se não existir uma env var de URL base do site ainda, adicionar `NEXT_PUBLIC_SITE_URL` (produção: `https://tornearia-castro.vercel.app`) — não deduza a URL a partir de headers do request em Server Action (não é confiável).
+- Cada clique em "Compartilhar" **renova** os 30 dias (comportamento simples e prático — não crie um segundo botão de "renovar link").
+
+## PASSO 5 — Server Action `converterEmServico` em `src/app/(app)/ordens-servico/actions.ts`
+- Exige `isAdmin`.
+- Só executa se, ao reconsultar a OS, `aprovado_em` não for nulo e `status === "orcado"` — senão retorna erro `"Orçamento ainda não foi aprovado pelo cliente."`. Não confie em estado vindo do client.
+- `update ordens_servico set status = 'em_execucao' where id = $1`.
+- `revalidatePath` na página de detalhe e na lista.
+
+## PASSO 6 — Rota pública `src/app/orcamento/[token]/page.tsx`
+Fora do grupo `(app)` (sem sidebar/menu autenticado — é uma página para o cliente final, fora do CRM). Server Component:
+1. Busca a OS via `createAdminClient()`, filtrando por `token_compartilhamento = params.token`.
+2. Se não encontrar, ou `link_expira_em` for nulo/passado: renderizar estado "Link inválido ou expirado — peça um novo orçamento à Tornearia Castro." (sem vazar detalhe nenhum da OS).
+3. Se `recusado_em` já preenchido: mostrar "Orçamento recusado em [data]" (somente leitura, sem botões).
+4. Se `aprovado_em` já preenchido: mostrar "Orçamento aprovado em [data]" + valor total (somente leitura, sem botões — evita aprovar duas vezes).
+5. Caso contrário (pendente, dentro da validade): mostrar itens de mão de obra/materiais, valor total, nome da Tornearia Castro, e os botões **Aprovar** / **Recusar**.
+
+Visual: reaproveitar os tokens de `src/app/globals.css` (Geist, paleta "industrial tech" já documentada em `docs/memoria/design-system.json`) — layout simples e profissional, não é tela de admin, é a "vitrine" que o cliente vê. Sem sidebar, sem menu do CRM.
+
+## PASSO 7 — Server Actions públicas: `src/app/orcamento/[token]/actions.ts`
+- `aprovarOrcamento(token)` e `recusarOrcamento(token)` — **sem checar sessão** (rota é pública de propósito), usam `createAdminClient()`.
+- Antes de gravar, revalidar no servidor: token existe, `link_expira_em` no futuro, `aprovado_em` e `recusado_em` ainda nulos (idempotência — não deixe um duplo-clique aprovar duas vezes nem sobrescrever uma recusa já registrada).
+- `aprovarOrcamento`: `update ordens_servico set aprovado_em = now() where token_compartilhamento = $1 and aprovado_em is null and recusado_em is null and link_expira_em > now()`.
+- `recusarOrcamento`: mesma lógica, gravando `recusado_em`.
+- `revalidatePath("/orcamento/" + token)`.
+
+## PASSO 8 — Liberar a rota pública no proxy
+Em `src/proxy.ts`, adicionar `/orcamento` à checagem `rotaPublica`:
+```ts
+const rotaPublica =
+  request.nextUrl.pathname.startsWith("/login") ||
+  request.nextUrl.pathname.startsWith("/definir-senha") ||
+  request.nextUrl.pathname.startsWith("/orcamento");
+```
+
+## PASSO 9 — Botão de WhatsApp
+No botão "Compartilhar orçamento" (Passo 3), montar um link `https://wa.me/55<telefone só dígitos>?text=<mensagem codificada com encodeURIComponent>` usando `cliente.telefone` (já existe em `Cliente`) e o link público gerado no Passo 4. Mensagem sugerida: `"Olá {nome do cliente}! Segue o orçamento da Tornearia Castro: {link}"`. Abrir em nova aba (`target="_blank"`). Sem custo, sem lib nova, sem API do WhatsApp.
+
+### Critério de Aceitação
+`npm run build` sem erros. Fluxo completo testável manualmente: abrir uma OS em `orcado` → "Compartilhar orçamento" gera link → abrir o link **em aba anônima/deslogada** mostra o orçamento somente-leitura → clicar "Aprovar" trava a página e grava a data → voltar ao CRM logado, a OS mostra "Aprovado" e o botão "Converter em Serviço" aparece → clicar converte o status para `em_execucao`. Testar também: link expirado (forçar `link_expira_em` no passado via SQL) mostra a mensagem de link inválido, sem vazar dado.
+
+### Em caso de erro
+Erro de RLS/permissão ao gravar aprovação pública = 🔴 Terminal, provavelmente a rota pública está usando o client errado (`createClient()` autenticado em vez de `createAdminClient()`) — reportar a Hades com a mensagem exata, não tentar contornar abrindo política `anon`. Após 2 tentativas sem sucesso, escalar com Protocolo de RCA.
+
+### Relatório obrigatório
+Formato padrão do Hades. Incluir explicitamente: confirmação de que nenhuma política de RLS nova foi criada, e o resultado do teste em aba anônima (com print ou output do Playwright, se disponível).

@@ -11,6 +11,10 @@ interface OrdemServicoRow {
   previsao_entrega: string | null;
   data_conclusao: string | null;
   observacoes: string | null;
+  token_compartilhamento: string;
+  aprovado_em: string | null;
+  recusado_em: string | null;
+  link_expira_em: string | null;
   clientes: { nome: string } | { nome: string }[] | null;
   itens_mao_de_obra: { id: string; descricao: string; horas: number; valor_hora: number }[];
   itens_materiais: { id: string; descricao: string; quantidade: number; unidade: string; valor_unitario: number }[];
@@ -49,6 +53,10 @@ function toOrdemServico(row: OrdemServicoRow): OrdemServico {
     previsaoEntrega: row.previsao_entrega ?? undefined,
     dataConclusao: row.data_conclusao ?? undefined,
     observacoes: row.observacoes ?? undefined,
+    tokenCompartilhamento: row.token_compartilhamento,
+    aprovadoEm: row.aprovado_em ?? undefined,
+    recusadoEm: row.recusado_em ?? undefined,
+    linkExpiraEm: row.link_expira_em ?? undefined,
   };
 }
 
@@ -73,4 +81,15 @@ export async function listOrdensServicoPorCliente(clienteId: string): Promise<Or
     .order("data_abertura", { ascending: false });
   if (error) throw error;
   return (data as unknown as OrdemServicoRow[]).map(toOrdemServico);
+}
+
+export async function getOrdemServico(id: string): Promise<OrdemServico | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("ordens_servico")
+    .select(SELECT_ORDEM_SERVICO)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? toOrdemServico(data as unknown as OrdemServicoRow) : null;
 }

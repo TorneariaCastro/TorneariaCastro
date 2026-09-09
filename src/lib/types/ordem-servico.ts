@@ -42,6 +42,10 @@ export interface OrdemServico {
   previsaoEntrega?: string;
   dataConclusao?: string;
   observacoes?: string;
+  tokenCompartilhamento: string;
+  aprovadoEm?: string;
+  recusadoEm?: string;
+  linkExpiraEm?: string;
 }
 
 export function calcularValorMaoDeObra(os: Pick<OrdemServico, "maoDeObra">): number {
