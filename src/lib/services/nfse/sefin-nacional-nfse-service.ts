@@ -189,7 +189,7 @@ function montarXmlDps(params: {
   cnpjPrestador: string;
 }): string {
   const { numeroDps, serieDps, req, cnpjPrestador } = params;
-  const agora = new Date().toISOString();
+  const agora = dataHoraComFuso();
 
   // Formato do Id confirmado no ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe-v1.01
   // (baixado de gov.br/nfse em 2026-09-08): "DPS" + Cod.Mun.(7) +
@@ -288,11 +288,59 @@ function assinarXml(xml: string, chavePrivadaPem: string, certificadoPem: string
   return sig.getSignedXml();
 }
 
-function agenteMtls(cert: CertificadoCarregado): https.Agent {
-  return new https.Agent({
-    pfx: cert.pfxBuffer,
-    passphrase: cert.senha,
+interface RespostaHttp {
+  status: number;
+  ok: boolean;
+  texto: string;
+}
+
+/**
+ * O `fetch` global do Node (undici) IGNORA a opção `agent`, então o
+ * certificado do cliente nunca era enviado e o servidor respondia 403.
+ * Aqui usamos `node:https` diretamente, que é quem de fato aceita o
+ * certificado para a autenticação mútua (mTLS) exigida pela SEFIN.
+ */
+function requisicaoMtls(
+  url: string,
+  opcoes: { method: string; headers?: Record<string, string>; body?: string },
+  cert: CertificadoCarregado,
+): Promise<RespostaHttp> {
+  return new Promise((resolve, reject) => {
+    const alvo = new URL(url);
+    const req = https.request(
+      {
+        hostname: alvo.hostname,
+        port: alvo.port || 443,
+        path: alvo.pathname + alvo.search,
+        method: opcoes.method,
+        headers: opcoes.headers ?? {},
+        pfx: cert.pfxBuffer,
+        passphrase: cert.senha,
+      },
+      (res) => {
+        const pedacos: Buffer[] = [];
+        res.on("data", (p) => pedacos.push(p));
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          resolve({ status, ok: status >= 200 && status < 300, texto: Buffer.concat(pedacos).toString("utf-8") });
+        });
+      },
+    );
+    req.on("error", reject);
+    if (opcoes.body) req.write(opcoes.body);
+    req.end();
   });
+}
+
+/**
+ * Formato exigido pelo anexo oficial (TSDateTimeUTC): AAAA-MM-DDThh:mm:ssTZD.
+ * Sem milissegundos e com o fuso explícito — o servidor rejeita tanto o
+ * ".123" quanto o sufixo "Z" (erro E1235, confirmado em homologação).
+ */
+function dataHoraComFuso(quando: Date = new Date()): string {
+  const HORAS_BRASILIA = -3;
+  const deslocado = new Date(quando.getTime() + HORAS_BRASILIA * 60 * 60 * 1000);
+  return `${deslocado.toISOString().replace(/\.\d{3}Z$/, "")}-03:00`;
 }
 
 function gzipBase64(xml: string): string {
@@ -326,15 +374,17 @@ export class SefinNacionalNfseService implements NfseService {
       // homologacao (2026-09-08): e um JSON com o campo "dpsXmlGZipB64",
       // NAO texto puro. Content-Type precisa ser application/json - texto
       // puro retorna 415.
-      const response = await fetch(`${SEFIN_BASE_URL}/nfse`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dpsXmlGZipB64: payloadGzipBase64 }),
-        // @ts-expect-error -- agente https customizado (mTLS) nao faz parte do tipo padrao do fetch
-        agent: agenteMtls(cert),
-      });
+      const response = await requisicaoMtls(
+        `${SEFIN_BASE_URL}/nfse`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dpsXmlGZipB64: payloadGzipBase64 }),
+        },
+        cert,
+      );
 
-      const textoResposta = await response.text();
+      const textoResposta = response.texto;
       if (!response.ok) {
         throw new Error(
           `SEFIN Nacional retornou HTTP ${response.status}: ${textoResposta.slice(0, 500)}`,
@@ -364,16 +414,12 @@ export class SefinNacionalNfseService implements NfseService {
     // RPS/DPS, nao a chave de acesso de 50 caracteres retornada pela
     // NFSe - precisa persistir a chave de acesso real na emissao para
     // essa consulta funcionar.
-    const response = await fetch(`${ADN_BASE_URL}/NFSe/${id}`, {
-      method: "GET",
-      // @ts-expect-error -- agente https customizado (mTLS) nao faz parte do tipo padrao do fetch
-      agent: agenteMtls(cert),
-    });
+    const response = await requisicaoMtls(`${ADN_BASE_URL}/NFSe/${id}`, { method: "GET" }, cert);
 
     if (response.status === 404) return "processando";
     if (!response.ok) return "erro";
 
-    const corpo = await response.text();
+    const corpo = response.texto;
     try {
       const xml = gunzipBase64(corpo);
       const parsed = parser.parse(xml);
@@ -389,13 +435,15 @@ export class SefinNacionalNfseService implements NfseService {
     // TODO(validar contra documentacao oficial): estrutura exata do
     // evento de cancelamento (payload, se tambem precisa ser assinado e
     // comprimido como a DPS) nao foi confirmada nesta sessao.
-    const response = await fetch(`${ADN_BASE_URL}/NFSe/${id}/Eventos`, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: gzipBase64(`<pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse"><Cancelamento/></pedRegEvento>`),
-      // @ts-expect-error -- agente https customizado (mTLS) nao faz parte do tipo padrao do fetch
-      agent: agenteMtls(cert),
-    });
+    const response = await requisicaoMtls(
+      `${ADN_BASE_URL}/NFSe/${id}/Eventos`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: gzipBase64(`<pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse"><Cancelamento/></pedRegEvento>`),
+      },
+      cert,
+    );
     return { cancelada: response.ok };
   }
 }
