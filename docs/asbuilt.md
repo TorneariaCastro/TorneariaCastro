@@ -2,7 +2,7 @@
 
 **Descrição:** Sistema interno de gestão da Tornearia Castro (clientes, ordens de serviço, financeiro), hoje um protótipo funcional sem persistência real. Objetivo: virar sistema de produção completo, sem faseamento de escopo (Kleber decidiu incluir tudo na v1).
 **Stack:** GitHub + Supabase + Vercel + Next.js 16 (App Router) + shadcn/ui
-**Última atualização:** 2026-09-09 (Fase 01 encerrada; Fase 02 — NFS-e real BH — travada esperando código de tributação de Kleber; Fase 02.5 — Portal do Orçamento — código completo, testado, auditado e promovido para `hml` junto com patch crítico do Next.js)
+**Última atualização:** 2026-09-09 (Fase 01 encerrada; Fase 02 — NFS-e real BH — travada esperando código de tributação de Kleber; Fase 02.5 — Portal do Orçamento — em produção, junto com patch crítico do Next.js)
 
 ---
 
@@ -98,8 +98,8 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟣 FASE 02.5: PORTAL DO ORÇAMENTO (compartilhamento e aprovação)
-**Status:** `🔄 Em Andamento` (código completo, aguardando 1 ação manual de Kleber para ficar testável)
-**Progresso:** 8/9 tarefas concluídas — falta aplicar a migration no banco (sem Supabase MCP conectado nesta sessão)
+**Status:** `✅ Completa` — em produção (`main`), migration aplicada, testada e auditada
+**Progresso:** 9/9 tarefas concluídas
 **Objetivo:** Fechar o ciclo orçamento → cliente aprova → vira serviço, sem sair do CRM e sem retrabalho de digitação. Spec completa da Shiva em `docs/memoria/projeto.md` e `docs/memoria/moscow.md` (adendo).
 **Por que agora, fora de ordem?** Fase 02 está travada esperando o código de tributação nacional (dado que só Kleber/contador resolvem, não é trabalho de código). Em vez de deixar o Atlas ocioso, esta fase entrou na frente — aprovada por Kleber em 2026-09-09.
 
@@ -161,6 +161,7 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 | Data | Tag | Tipo | Status |
 |------|-----|------|--------|
 | 2026-09-09 | `backup-pre-hml-20260909-143322` | Pré-HML | ✅ |
+| 2026-09-09 | `backup-pre-prod-20260909-161424` | 🔴 Pré-Produção | ✅ |
 
 ## Histórico de Sessões
 | Data | O que foi feito |
@@ -171,3 +172,4 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 | 2026-09-07 | Kleber pediu a ativação da NFS-e real de BH. Shiva conduziu discovery focada (caminho direto vs provedor, certificado, cadastro municipal, homologação) e documentou a decisão em `docs/memoria/integracao-nfse-bh.md`. Hades recebeu a spec, confirmou via pesquisa web os endpoints do webservice BHISS Digital (homologação e produção) e criou o plano técnico de 8 passos em `plano-tarefas.md` para o Atlas. |
 | 2026-09-09 | Kleber pediu compartilhamento de orçamento com clientes (link + WhatsApp + aprovação + conversão em serviço). Shiva conduziu discovery, fez MoSCoW da feature e documentou em `projeto.md`/`moscow.md`. Hades recebeu a spec, decidiu encaixar como Fase 02.5 (aproveitando a Fase 02 travada), definiu a arquitetura de segurança da rota pública (service role + validação por token, sem abrir RLS) e escreveu o plano técnico de 9 passos em `plano-tarefas.md` para o Atlas. |
 | 2026-09-09 | Atlas implementou a Fase 02.5 completa (commit `c445ce1`). Ravena testou a rota pública de ponta a ponta com browser real (aprovar, recusar, expiração, token inválido, mobile) — aprovou; não testou os botões internos "Compartilhar"/"Converter" por exigirem login (fora do que ela executa). Kerberos auditou com ataque real via chave `anon` contra o banco (leitura/escrita/exclusão bloqueadas pelo RLS) e aprovou a feature — mas encontrou, fora do escopo, RCE crítica não-autenticada no Next.js 16.3.2 (Image Optimization). Hades decidiu subir os dois juntos no mesmo ciclo `dev → hml`, em commits separados. Atlas aplicou o patch (`9dd64b5`), criou backup `backup-pre-hml-20260909-143322`, e — com confirmação explícita de Kleber — fez o merge `dev → hml` (fast-forward, `4261e4d..9dd64b5`), primeiro merge para `hml` desde o início do projeto. Build e typecheck limpos em `hml`. |
+| 2026-09-09 | Kleber tentou testar os botões manualmente e travou em dois problemas: (1) o botão "Criar Orçamento" do Dashboard fica desabilitado porque a seleção de cliente no `<Select>` não "gruda" no estado — confirmado via inspeção real do DOM (atributo `disabled` presente, campo oculto `clienteId` vazio, item da lista com `aria-selected="false"`); bug pré-existente da Fase 01, não desta fase, registrado para Hades investigar a causa raiz depois. Atlas contornou criando a OS-2026-0001 direto no banco (cliente real "Kleber Pereira") pra destravar o teste. (2) Kleber não encontrava a seção "Compartilhamento e aprovação" — causa raiz real: a Fase 02.5 nunca tinha sido promovida pra `main`/produção, só existia em `hml`. Confirmado via `git log origin/main..origin/hml` (14 commits pendentes). Com aprovação explícita de Kleber e backup crítico (`backup-pre-prod-20260909-161424`), Atlas fez o merge `hml → main` (fast-forward `f024264..9dd64b5`), build/typecheck limpos, push feito — Fase 02.5 e o patch do Next.js agora em produção de verdade. |
