@@ -120,7 +120,9 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 
 **Testável:** Assim que Kleber aplicar a migration — compartilhar gera link → aba anônima mostra o orçamento → aprovar libera "Converter em Serviço" → status muda pra `em_execucao`. `npm run build` e `npx tsc --noEmit` já rodaram limpos com o código atual.
 **Notas:** Sem custo novo — nem WhatsApp (link `wa.me` manual) nem infraestrutura nova. Adicionada env var `NEXT_PUBLIC_SITE_URL` em `.env.local` (não commitada) — falta replicar nas env vars do projeto Vercel (`telascastroclaudia@gmail.com`) antes do link público funcionar em produção. Regra de negócio: aprovar/recusar/converter é ação exclusiva de `administrador`, igual o resto do sistema.
-**Último trabalho:** Commit `c445ce1` em `dev`, push feito. Aguardando: (1) Kleber aplicar a migration `0004_portal_orcamento.sql` no SQL Editor do Supabase, (2) Kleber ou quem tiver acesso à conta Vercel de deploy adicionar `NEXT_PUBLIC_SITE_URL` nas env vars de produção/preview.
+**Último trabalho:** Commit `c445ce1` em `dev`, push feito. Migration aplicada e `NEXT_PUBLIC_SITE_URL` configurada por Kleber em 2026-09-09 — confirmado por Atlas via query real ao banco. Ravena testou a rota pública de ponta a ponta (aprovar, recusar, expiração, token inválido, mobile) e aprovou; não testou os botões "Compartilhar"/"Converter em Serviço" dentro do CRM por exigirem login (fora do que ela pode fazer). Kerberos auditou com ataque real usando a chave `anon` (RLS resistiu a leitura/escrita/exclusão indevida) e aprovou a feature — mas encontrou, fora do escopo desta fase, uma vulnerabilidade crítica não-relacionada no Next.js 16.3.2 (ver Patch de Segurança abaixo).
+
+⚠️ **Bloqueio novo, fora do escopo desta fase, encontrado por Kerberos:** Next.js 16.3.2 tem RCE não-autenticada crítica (Image Optimization + AVIF), afeta qualquer hospedagem incluindo Vercel. Patch: `16.3.3`+. Decisão de Hades: sobe junto com a Fase 02.5 no mesmo ciclo `dev → hml`, em commit separado. Ver `docs/memoria/plano-tarefas.md`, seção "PATCH DE SEGURANÇA".
 
 ---
 
@@ -147,6 +149,7 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 #### Tarefas:
 - [ ] Ravena — QA completo de todas as telas e fluxos (incluindo responsividade)
 - [ ] Kerberos — auditoria de segurança (RLS, secrets, headers HTTP, CORS)
+- [ ] Configurar headers de segurança em `next.config.ts` (`X-Frame-Options`, `Content-Security-Policy`, `Strict-Transport-Security`) — hoje ausentes, achado do Kerberos em 2026-09-09 durante auditoria da Fase 02.5 (app inteiro, não específico daquela feature; mais relevante agora que existe rota pública sem login)
 - [ ] Merge `dev → hml` → aprovação de Kleber → merge `hml → main`
 - [ ] Confirmar deploy final em produção na Vercel (conta telascastroclaudia@gmail.com)
 

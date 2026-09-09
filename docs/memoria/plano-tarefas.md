@@ -453,3 +453,31 @@ Erro de RLS/permissão ao gravar aprovação pública = 🔴 Terminal, provavelm
 
 ### Relatório obrigatório
 Formato padrão do Hades. Incluir explicitamente: confirmação de que nenhuma política de RLS nova foi criada, e o resultado do teste em aba anônima (com print ou output do Playwright, se disponível).
+
+---
+
+# Plano de Tarefas — PATCH DE SEGURANÇA: Next.js 16.3.2 → 16.3.4
+
+## Contexto
+Kerberos encontrou, auditando a Fase 02.5, duas vulnerabilidades CRÍTICAS no Next.js 16.3.2 (`npm audit`): uma exclusiva de hospedagem Windows (não afeta a Vercel/Linux de produção) e outra — RCE não-autenticada via Image Optimization com arquivo AVIF malicioso — que **afeta qualquer hospedagem**, incluindo Vercel, e o endpoint (`/_next/image`) está confirmadamente ativo mesmo sem o app usar `<Image>` em nenhuma tela ainda. Patch corrigido: `15.5.24` / `16.3.3`. Decisão (Hades): não vale a pena atrasar por causa de patch de versão — é upgrade de patch, risco baixíssimo de quebrar algo, e não tem NENHUMA dependência com a Fase 02.5. As duas coisas vão juntas pro mesmo ciclo de `hml` (ver seção final), mas em commits separados — rastreabilidade importa.
+
+## Passos
+1. `npm install next@16.3.4`
+2. `npx tsc --noEmit` — zero erros esperado
+3. `npm run build` — build limpo esperado
+4. Commit isolado: `fix: atualiza Next.js para corrigir RCE critica em Image Optimization (CVE)`, sem misturar com arquivos da Fase 02.5
+5. Push para `dev`
+
+### Critério de Aceitação
+Build e typecheck limpos. `npm audit --audit-level=critical` sem mais entradas de Next.js.
+
+### Em caso de erro
+Se o upgrade quebrar algo (breaking change inesperado de patch, incomum mas possível), parar e reportar a Hades antes de tentar contornar — não fazer downgrade silencioso.
+
+---
+
+## Promoção conjunta `dev → hml`
+
+Depois do patch commitado e da Fase 02.5 já commitada (ambas já estão em `dev`), Atlas segue o Protocolo de Backup e Merge padrão (tag `backup-pre-hml-*`, build/testes, aguardar confirmação explícita de Kleber) e promove **as duas coisas juntas** num único merge `dev → hml` — não há motivo pra gastar dois ciclos de backup/verificação em mudanças que já estão prontas ao mesmo tempo.
+
+Pendência que NÃO bloqueia esse merge: Kleber ainda não fez a checagem manual dos botões "Compartilhar orçamento" / "Converter em Serviço" (ver relatório da Ravena — ela não pôde testar essa parte por não digitar senha de login). Recomendação: fazer essa checagem já em `hml` depois do merge — é literalmente o ambiente feito pra isso.
