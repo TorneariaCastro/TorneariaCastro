@@ -37,7 +37,7 @@ export function OrdemServicoFormDialog({
   children,
 }: OrdemServicoFormDialogProps) {
   const [open, setOpen] = useState(false);
-  const [clienteId, setClienteId] = useState<string>("");
+  const [clienteId, setClienteId] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -58,7 +58,7 @@ export function OrdemServicoFormDialog({
       setError(undefined);
       setOpen(false);
       formRef.current?.reset();
-      setClienteId("");
+      setClienteId(null);
     });
   }
 
@@ -82,12 +82,12 @@ export function OrdemServicoFormDialog({
           </DialogHeader>
 
           <input type="hidden" name="status" value={statusInicial} />
-          <input type="hidden" name="clienteId" value={clienteId} />
+          <input type="hidden" name="clienteId" value={clienteId ?? ""} />
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Cliente</Label>
-              <Select value={clienteId} onValueChange={(v) => setClienteId(v ?? "")} required>
+              <Select value={clienteId} onValueChange={setClienteId} required>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
