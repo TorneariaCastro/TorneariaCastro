@@ -47,6 +47,20 @@ export function OrdemServicoFormDialog({
   const statusInicialLabel = modo === "orcamento" ? "Orçado" : "Rascunho";
 
   function handleSubmit(formData: FormData) {
+    // Validação explícita: dentro do dialog, o balão de validação nativo do
+    // navegador não aparece, e o envio era bloqueado sem nenhum aviso na tela.
+    const descricao = String(formData.get("descricao") ?? "").trim();
+    if (!clienteId) {
+      setError("Selecione um cliente.");
+      toast.error("Selecione um cliente.");
+      return;
+    }
+    if (!descricao) {
+      setError("Descreva o serviço para continuar.");
+      toast.error("Descreva o serviço para continuar.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await criarOrdemServico(undefined, formData);
       if (result.error) {
@@ -73,7 +87,7 @@ export function OrdemServicoFormDialog({
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form ref={formRef} action={handleSubmit}>
+        <form ref={formRef} action={handleSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>{titulo}</DialogTitle>
             <DialogDescription>

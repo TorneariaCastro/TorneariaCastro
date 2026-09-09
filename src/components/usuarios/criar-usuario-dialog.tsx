@@ -27,6 +27,21 @@ export function CriarUsuarioDialog() {
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleSubmit(formData: FormData) {
+    // Validação explícita: dentro do dialog, o balão de validação nativo do
+    // navegador não aparece, e o envio era bloqueado sem nenhum aviso na tela.
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+    if (!email) {
+      setError("Informe o e-mail.");
+      toast.error("Informe o e-mail.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("A senha precisa ter pelo menos 8 caracteres.");
+      toast.error("A senha precisa ter pelo menos 8 caracteres.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await criarUsuario(undefined, formData);
       if (result.error) {
@@ -49,7 +64,7 @@ export function CriarUsuarioDialog() {
         Criar usuário
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
-        <form ref={formRef} action={handleSubmit}>
+        <form ref={formRef} action={handleSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>Criar novo usuário</DialogTitle>
             <DialogDescription>Defina o acesso completo agora — e-mail, senha e o que essa pessoa pode fazer.</DialogDescription>

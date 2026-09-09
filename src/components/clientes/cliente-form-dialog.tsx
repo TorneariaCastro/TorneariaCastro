@@ -35,6 +35,28 @@ export function ClienteFormDialog({ variant = "outline", className, children }: 
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleSubmit(formData: FormData) {
+    // Validação explícita: dentro do dialog, o balão de validação nativo do
+    // navegador não aparece, e o envio era bloqueado sem nenhum aviso na tela.
+    const obrigatorios: Array<[string, string]> = [
+      ["nome", tipoPessoa === "juridica" ? "Razão Social" : "Nome completo"],
+      ["documento", tipoPessoa === "juridica" ? "CNPJ" : "CPF"],
+      ["email", "E-mail"],
+      ["telefone", "Telefone"],
+      ["logradouro", "Logradouro"],
+      ["numero", "Número"],
+      ["bairro", "Bairro"],
+      ["cidade", "Cidade"],
+      ["uf", "UF"],
+      ["cep", "CEP"],
+    ];
+    const faltando = obrigatorios.find(([campo]) => !String(formData.get(campo) ?? "").trim());
+    if (faltando) {
+      const mensagem = `Preencha o campo "${faltando[1]}".`;
+      setError(mensagem);
+      toast.error(mensagem);
+      return;
+    }
+
     startTransition(async () => {
       const result = await criarCliente(undefined, formData);
       if (result.error) {
@@ -60,7 +82,7 @@ export function ClienteFormDialog({ variant = "outline", className, children }: 
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form ref={formRef} action={handleSubmit}>
+        <form ref={formRef} action={handleSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>Novo cliente</DialogTitle>
             <DialogDescription>Cadastre um novo cliente pessoa física ou jurídica.</DialogDescription>
