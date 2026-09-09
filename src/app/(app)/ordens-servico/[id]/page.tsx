@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { getOrdemServico } from "@/lib/data/ordens-servico";
 import { getCliente } from "@/lib/data/clientes";
@@ -10,6 +9,7 @@ import { calcularValorTotal } from "@/lib/types";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { getSessao } from "@/lib/auth/session";
 import { OrdemServicoAcoes } from "./ordem-servico-acoes";
+import { ItensLancamentos } from "./itens-lancamentos";
 
 export default async function OrdemServicoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -68,71 +68,24 @@ export default async function OrdemServicoDetalhePage({ params }: { params: Prom
         </Card>
       </div>
 
-      {os.maoDeObra.length > 0 && (
-        <Card className="py-0">
-          <CardHeader className="pt-5">
-            <CardTitle className="text-base font-semibold">Mão de obra</CardTitle>
-          </CardHeader>
-          <CardContent className="px-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right">Horas</TableHead>
-                  <TableHead className="text-right">Valor/hora</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {os.maoDeObra.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.descricao}</TableCell>
-                    <TableCell className="text-right">{item.horas}</TableCell>
-                    <TableCell className="text-right">{formatarMoeda(item.valorHora)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatarMoeda(item.horas * item.valorHora)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {os.materiais.length > 0 && (
-        <Card className="py-0">
-          <CardHeader className="pt-5">
-            <CardTitle className="text-base font-semibold">Materiais</CardTitle>
-          </CardHeader>
-          <CardContent className="px-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right">Qtd.</TableHead>
-                  <TableHead className="text-right">Valor unitário</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {os.materiais.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.descricao}</TableCell>
-                    <TableCell className="text-right">
-                      {item.quantidade} {item.unidade}
-                    </TableCell>
-                    <TableCell className="text-right">{formatarMoeda(item.valorUnitario)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatarMoeda(item.quantidade * item.valorUnitario)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">Valores do serviço</CardTitle>
+          {os.aprovadoEm && (
+            <p className="text-sm text-muted-foreground">
+              O cliente já aprovou este orçamento — os valores ficaram travados.
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          <ItensLancamentos
+            ordemServicoId={os.id}
+            maoDeObra={os.maoDeObra}
+            materiais={os.materiais}
+            podeEditar={isAdmin && !os.aprovadoEm}
+          />
+        </CardContent>
+      </Card>
 
       {isAdmin && cliente && (
         <Card>

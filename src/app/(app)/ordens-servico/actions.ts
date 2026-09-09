@@ -123,3 +123,110 @@ export async function converterEmServico(ordemServicoId: string): Promise<Conver
   revalidatePath("/dashboard");
   return {};
 }
+
+export interface ItemState {
+  error?: string;
+}
+
+/**
+ * Depois que o cliente aprova o orçamento, os valores não podem mais mudar —
+ * ele aprovou um preço específico.
+ */
+async function garantirEdicaoPermitida(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ordemServicoId: string,
+): Promise<string | null> {
+  const { data: os } = await supabase
+    .from("ordens_servico")
+    .select("aprovado_em")
+    .eq("id", ordemServicoId)
+    .maybeSingle();
+
+  if (!os) return "Ordem de serviço não encontrada.";
+  if (os.aprovado_em) return "O cliente já aprovou este orçamento — os valores não podem mais ser alterados.";
+  return null;
+}
+
+function revalidarOrdem(ordemServicoId: string) {
+  revalidatePath(`/ordens-servico/${ordemServicoId}`);
+  revalidatePath("/ordens-servico");
+  revalidatePath("/dashboard");
+}
+
+export async function adicionarMaoDeObra(ordemServicoId: string, formData: FormData): Promise<ItemState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) return { error: "Consultores não podem lançar valores." };
+
+  const descricao = String(formData.get("descricao") ?? "").trim();
+  const horas = Number(String(formData.get("horas") ?? "").replace(",", "."));
+  const valorHora = Number(String(formData.get("valorHora") ?? "").replace(",", "."));
+
+  if (!descricao) return { error: "Descreva a mão de obra." };
+  if (!Number.isFinite(horas) || horas <= 0) return { error: "Informe a quantidade de horas." };
+  if (!Number.isFinite(valorHora) || valorHora <= 0) return { error: "Informe o valor por hora." };
+
+  const supabase = await createClient();
+  const bloqueio = await garantirEdicaoPermitida(supabase, ordemServicoId);
+  if (bloqueio) return { error: bloqueio };
+
+  const { error } = await supabase.from("itens_mao_de_obra").insert({
+    ordem_servico_id: ordemServicoId,
+    descricao,
+    horas,
+    valor_hora: valorHora,
+  });
+  if (error) return { error: "Não foi possível lançar a mão de obra." };
+
+  revalidarOrdem(ordemServicoId);
+  return {};
+}
+
+export async function adicionarMaterial(ordemServicoId: string, formData: FormData): Promise<ItemState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) return { error: "Consultores não podem lançar valores." };
+
+  const descricao = String(formData.get("descricao") ?? "").trim();
+  const quantidade = Number(String(formData.get("quantidade") ?? "").replace(",", "."));
+  const unidade = String(formData.get("unidade") ?? "").trim() || "un";
+  const valorUnitario = Number(String(formData.get("valorUnitario") ?? "").replace(",", "."));
+
+  if (!descricao) return { error: "Descreva o material." };
+  if (!Number.isFinite(quantidade) || quantidade <= 0) return { error: "Informe a quantidade." };
+  if (!Number.isFinite(valorUnitario) || valorUnitario <= 0) return { error: "Informe o valor unitário." };
+
+  const supabase = await createClient();
+  const bloqueio = await garantirEdicaoPermitida(supabase, ordemServicoId);
+  if (bloqueio) return { error: bloqueio };
+
+  const { error } = await supabase.from("itens_materiais").insert({
+    ordem_servico_id: ordemServicoId,
+    descricao,
+    quantidade,
+    unidade,
+    valor_unitario: valorUnitario,
+  });
+  if (error) return { error: "Não foi possível lançar o material." };
+
+  revalidarOrdem(ordemServicoId);
+  return {};
+}
+
+export async function removerItem(
+  tipo: "mao_de_obra" | "material",
+  itemId: string,
+  ordemServicoId: string,
+): Promise<ItemState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) return { error: "Consultores não podem remover lançamentos." };
+
+  const supabase = await createClient();
+  const bloqueio = await garantirEdicaoPermitida(supabase, ordemServicoId);
+  if (bloqueio) return { error: bloqueio };
+
+  const tabela = tipo === "mao_de_obra" ? "itens_mao_de_obra" : "itens_materiais";
+  const { error } = await supabase.from(tabela).delete().eq("id", itemId);
+  if (error) return { error: "Não foi possível remover o lançamento." };
+
+  revalidarOrdem(ordemServicoId);
+  return {};
+}
