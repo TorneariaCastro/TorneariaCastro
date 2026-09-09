@@ -87,7 +87,12 @@ export function OrdemServicoFormDialog({
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Cliente</Label>
-              <Select value={clienteId} onValueChange={setClienteId} required>
+              <Select
+                items={clientes.map((cliente) => ({ value: cliente.id, label: cliente.nome }))}
+                value={clienteId}
+                onValueChange={setClienteId}
+                required
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
