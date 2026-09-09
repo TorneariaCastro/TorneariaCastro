@@ -2,7 +2,7 @@
 
 **Descrição:** Sistema interno de gestão da Tornearia Castro (clientes, ordens de serviço, financeiro), hoje um protótipo funcional sem persistência real. Objetivo: virar sistema de produção completo, sem faseamento de escopo (Kleber decidiu incluir tudo na v1).
 **Stack:** GitHub + Supabase + Vercel + Next.js 16 (App Router) + shadcn/ui
-**Última atualização:** 2026-09-09 (Fase 01 encerrada; Fase 02 — NFS-e real BH — travada esperando código de tributação de Kleber; Fase 02.5 — Portal do Orçamento — nova, planejada pelo Hades e pronta pro Atlas)
+**Última atualização:** 2026-09-09 (Fase 01 encerrada; Fase 02 — NFS-e real BH — travada esperando código de tributação de Kleber; Fase 02.5 — Portal do Orçamento — código completo, testado, auditado e promovido para `hml` junto com patch crítico do Next.js)
 
 ---
 
@@ -160,7 +160,7 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ## Backups e Segurança
 | Data | Tag | Tipo | Status |
 |------|-----|------|--------|
-| — | — | — | Nenhum backup ainda (projeto não é repo git) |
+| 2026-09-09 | `backup-pre-hml-20260909-143322` | Pré-HML | ✅ |
 
 ## Histórico de Sessões
 | Data | O que foi feito |
@@ -170,3 +170,4 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 | 2026-08-26 | Atlas implementou schema+RLS (SQL pronto, não aplicado), Supabase Auth, proxy de rota, e substituiu todos os mocks por dados reais (commits `0f16a06`, `c728d0c` em `dev`). Build/lint/typecheck OK. Dois bloqueios ficaram para Kleber resolver: aplicar a migration (sem Management API token) e autorizar `vercel link` (negado pelo classificador de permissão). |
 | 2026-09-07 | Kleber pediu a ativação da NFS-e real de BH. Shiva conduziu discovery focada (caminho direto vs provedor, certificado, cadastro municipal, homologação) e documentou a decisão em `docs/memoria/integracao-nfse-bh.md`. Hades recebeu a spec, confirmou via pesquisa web os endpoints do webservice BHISS Digital (homologação e produção) e criou o plano técnico de 8 passos em `plano-tarefas.md` para o Atlas. |
 | 2026-09-09 | Kleber pediu compartilhamento de orçamento com clientes (link + WhatsApp + aprovação + conversão em serviço). Shiva conduziu discovery, fez MoSCoW da feature e documentou em `projeto.md`/`moscow.md`. Hades recebeu a spec, decidiu encaixar como Fase 02.5 (aproveitando a Fase 02 travada), definiu a arquitetura de segurança da rota pública (service role + validação por token, sem abrir RLS) e escreveu o plano técnico de 9 passos em `plano-tarefas.md` para o Atlas. |
+| 2026-09-09 | Atlas implementou a Fase 02.5 completa (commit `c445ce1`). Ravena testou a rota pública de ponta a ponta com browser real (aprovar, recusar, expiração, token inválido, mobile) — aprovou; não testou os botões internos "Compartilhar"/"Converter" por exigirem login (fora do que ela executa). Kerberos auditou com ataque real via chave `anon` contra o banco (leitura/escrita/exclusão bloqueadas pelo RLS) e aprovou a feature — mas encontrou, fora do escopo, RCE crítica não-autenticada no Next.js 16.3.2 (Image Optimization). Hades decidiu subir os dois juntos no mesmo ciclo `dev → hml`, em commits separados. Atlas aplicou o patch (`9dd64b5`), criou backup `backup-pre-hml-20260909-143322`, e — com confirmação explícita de Kleber — fez o merge `dev → hml` (fast-forward, `4261e4d..9dd64b5`), primeiro merge para `hml` desde o início do projeto. Build e typecheck limpos em `hml`. |
