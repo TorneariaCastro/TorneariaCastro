@@ -76,11 +76,6 @@ const SEFIN_BASE_URL =
     ? "https://sefin.nfse.gov.br/SefinNacional"
     : "https://sefin.producaorestrita.nfse.gov.br/SefinNacional";
 
-const ADN_BASE_URL =
-  AMBIENTE === "producao"
-    ? "https://adn.nfse.gov.br/contribuintes"
-    : "https://adn.producaorestrita.nfse.gov.br/contribuintes";
-
 const TP_AMBIENTE = AMBIENTE === "producao" ? "1" : "2"; // 1 = producao, 2 = homologacao (padrao nacional)
 const CODIGO_MUNICIPIO_BH = "3106200";
 
@@ -259,7 +254,9 @@ function montarXmlDps(params: {
     `<trib><tribMun>` +
     `<tribISSQN>1</tribISSQN>` + // 1 = Operacao tributavel (caso padrao)
     `<tpRetISSQN>1</tpRetISSQN>` + // 1 = Nao retido
-    `<pAliq>${req.aliquotaIss}</pAliq>` +
+    // pAliq é PERCENTUAL (5% = "5.00"), não fração. A aplicação trabalha com
+    // fração (0.05), então converte aqui — enviar 0.05 declararia 0,05% de ISS.
+    `<pAliq>${(req.aliquotaIss * 100).toFixed(2)}</pAliq>` +
     `</tribMun>` +
     `<totTrib><indTotTrib>0</indTotTrib></totTrib>` +
     `</trib>` +
@@ -391,7 +388,10 @@ export class SefinNacionalNfseService implements NfseService {
         );
       }
 
-      return interpretarRespostaEmissao(textoResposta, req, numeroDps, serieDps);
+      return (
+        interpretarRespostaJson(textoResposta, req) ??
+        interpretarRespostaEmissao(textoResposta, req, numeroDps, serieDps)
+      );
     } catch (erro) {
       return {
         id: `dps_${serieDps}_${numeroDps}`,
@@ -414,7 +414,9 @@ export class SefinNacionalNfseService implements NfseService {
     // RPS/DPS, nao a chave de acesso de 50 caracteres retornada pela
     // NFSe - precisa persistir a chave de acesso real na emissao para
     // essa consulta funcionar.
-    const response = await requisicaoMtls(`${ADN_BASE_URL}/NFSe/${id}`, { method: "GET" }, cert);
+    // Rota confirmada na especificação oficial: GET /SefinNacional/nfse/{chaveAcesso}.
+    // O `id` guardado em notas_fiscais é a chave de acesso devolvida na emissão.
+    const response = await requisicaoMtls(`${SEFIN_BASE_URL}/nfse/${id}`, { method: "GET" }, cert);
 
     if (response.status === 404) return "processando";
     if (!response.ok) return "erro";
@@ -435,12 +437,22 @@ export class SefinNacionalNfseService implements NfseService {
     // TODO(validar contra documentacao oficial): estrutura exata do
     // evento de cancelamento (payload, se tambem precisa ser assinado e
     // comprimido como a DPS) nao foi confirmada nesta sessao.
+    // Rota e formato do corpo confirmados na especificação oficial:
+    // POST /SefinNacional/nfse/{chaveAcesso}/eventos, com o pedido de evento
+    // em JSON no campo `pedidoRegistroEventoXmlGZipB64`.
+    const pedidoXml =
+      `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">` +
+      `<infPedReg><chNFSe>${id}</chNFSe><e101101><xDesc>Cancelamento de NFS-e</xDesc>` +
+      `<cMotivo>1</cMotivo><xMotivo>Cancelamento solicitado pelo prestador</xMotivo></e101101>` +
+      `</infPedReg></pedRegEvento>`;
+
     const response = await requisicaoMtls(
-      `${ADN_BASE_URL}/NFSe/${id}/Eventos`,
+      `${SEFIN_BASE_URL}/nfse/${id}/eventos`,
       {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: gzipBase64(`<pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse"><Cancelamento/></pedRegEvento>`),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pedidoRegistroEventoXmlGZipB64: gzipBase64(pedidoXml) }),
       },
       cert,
     );
@@ -489,6 +501,55 @@ function interpretarRespostaEmissao(
     status: "emitida",
     linkPdf: "",
     dataEmissao: new Date().toISOString(),
+    valorIss,
+  };
+}
+
+/**
+ * Formato da resposta de sucesso confirmado na especificação oficial da API
+ * (API NFS-e - Sefin Nacional v1, definição `NFSePostResponseSucesso`): é um
+ * JSON com `chaveAcesso` e a NFS-e autorizada em `nfseXmlGZipB64`.
+ */
+function interpretarRespostaJson(
+  respostaTexto: string,
+  req: EmissaoNfseRequest,
+): EmissaoNfseResult | null {
+  let corpo: {
+    chaveAcesso?: string;
+    idDps?: string;
+    nfseXmlGZipB64?: string;
+    dataHoraProcessamento?: string;
+  };
+  try {
+    corpo = JSON.parse(respostaTexto);
+  } catch {
+    return null;
+  }
+  if (!corpo.chaveAcesso) return null;
+
+  const valorIss = Number((req.valorServico * req.aliquotaIss).toFixed(2));
+
+  let numero = "";
+  let codigoVerificacao = "";
+  if (corpo.nfseXmlGZipB64) {
+    try {
+      const xmlNfse = gunzipBase64(corpo.nfseXmlGZipB64);
+      const nfse = parser.parse(xmlNfse);
+      const texto = JSON.stringify(nfse);
+      numero = texto.match(/"nNFSe":"?(\d+)"?/)?.[1] ?? "";
+      codigoVerificacao = texto.match(/"cVerif"[^"]*"([^"]+)"/)?.[1] ?? "";
+    } catch {
+      // A chave de acesso já identifica a nota; o XML é complementar.
+    }
+  }
+
+  return {
+    id: corpo.chaveAcesso,
+    numero: numero || corpo.chaveAcesso.slice(-13),
+    codigoVerificacao,
+    status: "emitida",
+    linkPdf: `${SEFIN_BASE_URL}/DANFSe/${corpo.chaveAcesso}`,
+    dataEmissao: corpo.dataHoraProcessamento ?? new Date().toISOString(),
     valorIss,
   };
 }
