@@ -56,6 +56,17 @@ Descartada por usabilidade: `OS-2026-0001` é o que Kleber e o cliente falam ao 
 - **O contador incrementa antes do insert.** Se a criação da OS falhar depois de obter o número, aquele número é consumido e vira um buraco. Mesmo comportamento (deliberado) de `nextval_nfse_rps_sequencial`.
 - **Descasamento teórico de 3 horas na virada do ano** entre o ano do número (São Paulo) e `data_abertura` (gravado em UTC por `default now()`). Uma OS aberta em 31/12 às 22h receberia número `OS-2026-XXXX` com `data_abertura` em 2027. Aceito: a oficina não opera nessa faixa, e corrigir exigiria mexer no default de uma coluna já em produção — custo desproporcional ao risco.
 
+## Emenda de 2026-09-10 — o que "não restaurar o contador" quer dizer
+
+Logo após a aplicação, os testes de aceitação consumiram os números 0001, 0002 e 0003 chamando a função diretamente. O contador ficou em 3, e a primeira OS real nasceria `OS-2026-0004`. O contador foi **zerado** antes do uso real, com `ordens_servico` vazia.
+
+Isso não contradiz a regra dos buracos. A distinção:
+
+- **Número que identificou um documento** — a OS existiu, foi falada ao telefone, virou orçamento enviado ao cliente ou nota fiscal. Esse número está queimado para sempre. Reciclar faria duas coisas distintas compartilharem identidade no histórico. **Nunca restaurar.**
+- **Número que nunca identificou nada** — consumido por teste, sem OS criada, sem papel, sem cliente. É resíduo, não histórico. **Pode ser descartado enquanto `ordens_servico` estiver vazia**, porque não existe documento com que colidir.
+
+Critério prático para o futuro: só é seguro zerar o contador se **nenhuma** OS existir no banco para aquele ano. Havendo qualquer OS, o contador tem de permanecer acima do maior número já usado — e a semeadura da migration `0007` faz exatamente isso.
+
 ## Momento da aplicação
 
 Executada com `ordens_servico` **vazia** (0 linhas, após a limpeza das OS de teste em 2026-09-10). É o momento mais barato possível: o contador nasce zerado e não precisa ser calibrado a partir de dados existentes. Ainda assim, a migration faz a semeadura a partir do maior número já existente por ano — para permanecer correta caso alguma OS seja criada entre a escrita e a aplicação.
