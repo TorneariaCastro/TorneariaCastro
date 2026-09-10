@@ -10,14 +10,18 @@ export interface CriarOrdemServicoState {
   error?: string;
 }
 
-async function proximoNumero(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
-  const ano = new Date().getFullYear();
-  const { count } = await supabase
-    .from("ordens_servico")
-    .select("id", { count: "exact", head: true })
-    .gte("data_abertura", `${ano}-01-01`);
-  const sequencial = String((count ?? 0) + 1).padStart(4, "0");
-  return `OS-${ano}-${sequencial}`;
+/**
+ * Numero da OS gerado por contador no banco, nao por contagem de linhas.
+ * Contagem anda para tras: apagar uma OS, ou criar duas ao mesmo tempo, gerava
+ * um numero ja existente e a constraint unique derrubava a criacao.
+ * Ver docs/decisions/ADR-001-numeracao-de-ordens-de-servico.md
+ */
+async function proximoNumero(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("proximo_numero_os");
+  if (error || typeof data !== "string") return null;
+  return data;
 }
 
 export async function criarOrdemServico(
@@ -40,6 +44,9 @@ export async function criarOrdemServico(
   }
 
   const numero = await proximoNumero(supabase);
+  if (!numero) {
+    return { error: "Não foi possível gerar o número da ordem de serviço." };
+  }
 
   const { error } = await supabase.from("ordens_servico").insert({
     numero,
