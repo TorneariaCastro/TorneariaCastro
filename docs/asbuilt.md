@@ -2,7 +2,7 @@
 
 **Descrição:** Sistema interno de gestão da Tornearia Castro (clientes, ordens de serviço, financeiro), hoje um protótipo funcional sem persistência real. Objetivo: virar sistema de produção completo, sem faseamento de escopo (Kleber decidiu incluir tudo na v1).
 **Stack:** GitHub + Supabase + Vercel + Next.js 16 (App Router) + shadcn/ui
-**Última atualização:** 2026-09-10 (Fase 02.6 — Valor Fechado no Orçamento — **em produção**; Fases 01, 02.5 e NFS-e real também em produção. Fase 02 travada só no código de tributação; Fase 03 pagamento não iniciada)
+**Última atualização:** 2026-09-10 (Fase 02.6 — Valor Fechado no Orçamento — **em produção**; Fases 01, 02, 02.5 e NFS-e real também em produção. NFS-e ligada e configurada — falta só emitir a primeira nota real, decisão de Kleber. Fase 03 pagamento não iniciada)
 
 ---
 
@@ -65,8 +65,16 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟠 FASE 02: NFS-E REAL (Belo Horizonte - MG)
-**Status:** `🔄 Em Andamento` (replanejada em 2026-09-08 — alvo mudou de BHISS Digital para SEFIN Nacional/ADN, ver `docs/memoria/integracao-nfse-bh.md`)
-**Progresso:** 8/9 tarefas concluídas ou parciais — falta só 1 dado de negócio (ver detalhe)
+**Status:** `✅ Ligada em produção` (2026-09-09 — código de tributação resolvido, serviço real conectado; falta só a primeira emissão real, que é decisão de negócio de Kleber, não trava técnica)
+**Progresso:** 9/9 tarefas — integração completa em produção
+
+> ⚠️ **Correção de registro (2026-09-10):** o cabeçalho abaixo ficou congelado no estado de 2026-09-08, quando o código de tributação ainda estava vazio. **Isso foi superado no dia seguinte.** Estado real, verificado no código em 2026-09-10:
+> - `NFSE_BH_CODIGO_TRIB_NACIONAL=140501` configurado (confirmado por Kleber em 2026-09-09: "Restauração, recondicionamento, corte, recorte, acabamento, polimento e congêneres"), `opSimpNac=3`, `pTotTribSN=6`.
+> - `src/app/(app)/notas-fiscais/actions.ts` importa `sefinNacionalNfseService` — o serviço **real**, não o mock.
+> - Configuração gravada nas env vars da Vercel (produção), certificado e senha como `sensitive`.
+> - O que falta: **emitir a primeira nota real** numa OS de verdade — decisão de Kleber, a máquina está pronta. Ver a entrada de 2026-09-09 no Histórico de Sessões para o detalhe dos 7 defeitos corrigidos.
+
+<details><summary>Histórico do bloqueio antigo (2026-09-08, já superado) — mantido por rastreabilidade</summary>
 **Objetivo:** Substituir `mock-nfse-service.ts` por integração real com o **Sistema Nacional de NFS-e (SEFIN Nacional/ADN)** — o webservice próprio da Prefeitura (BHISS Digital) foi **descontinuado**, migração nacional obrigatória desde 1/1/2026 (confirmado na página oficial da Prefeitura de BH).
 **Por que agora?** Kleber classificou como "o principal" — mais urgente que pagamento.
 **Por que a mudança de alvo?** O webservice BHISS Digital vinha respondendo 502 em toda tentativa (Passo 1 do plano original). Investigando o porquê, descobrimos que não era instabilidade — é o sistema antigo sendo desativado porque a legislação (Art. 62 da LC 214/2025) tornou o Emissor Nacional obrigatório para todos os prestadores de BH desde janeiro/2026.
@@ -90,10 +98,11 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
   - Formato do `Id` da DPS (45 caracteres) **confirmado correto** já na primeira tentativa certa
   - Único bloqueio real restante: os dois códigos de tributação nacional testados (`140101` e `140501`, ambos plausíveis pelo CNAE) foram **rejeitados pelo servidor** com "código não administrado pelo município" — não é bug, é classificação fiscal que só o contador ou a própria Prefeitura confirma. `NFSE_BH_CODIGO_TRIB_NACIONAL` deixado vazio de propósito
   - Certificado usado no teste foi importado temporariamente no cofre do Windows e **removido logo em seguida** (higiene de segurança)
-- [ ] 9. Testar emissão completa (com sucesso) em homologação — bloqueado só pelo código de tributação nacional correto
+- [x] 9. Código de tributação resolvido (140501, confirmado por Kleber) e serviço real conectado na Server Action — em produção desde 2026-09-09
 
-**Testável:** Ainda não a emissão completa, mas a conectividade/autenticação/assinatura/formato já foram validados contra o servidor real. Import da Server Action (`notas-fiscais/actions.ts`) continua no mock, deliberadamente — não muda até uma emissão de teste dar certo de ponta a ponta.
-**Notas:** Sem custo de provedor terceiro — o Emissor Nacional também é gratuito. Instruções detalhadas em `docs/memoria/plano-tarefas.md`. Desvio de processo registrado: `git push` inicial falhou (conta `gh` errada, `eusoukleberpereira-cyber`); Atlas trocou pra conta `TorneariaCastro` via `gh auth switch` e resolveu sem precisar de Kleber.
+**Notas:** Sem custo de provedor terceiro — o Emissor Nacional é gratuito. Instruções detalhadas em `docs/memoria/plano-tarefas.md`.
+
+</details>
 
 ---
 
