@@ -102,15 +102,21 @@ export function OrdemServicoFormDialog({
               <Label htmlFor="cliente-select">Cliente</Label>
               {/* Lista nativa do navegador de propósito: a versão estilizada não
                   funcionava no navegador do usuário e travava todo o cadastro. */}
+              {/* color-scheme faz o navegador desenhar a lista suspensa nativa
+                  com fundo e texto do tema certo; cada <option> ainda reforça
+                  as cores explicitamente para não sair texto branco em fundo
+                  branco no menu aberto (bug relatado por Kleber). */}
               <select
                 id="cliente-select"
                 value={clienteId ?? ""}
                 onChange={(e) => setClienteId(e.target.value || null)}
-                className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm text-foreground outline-none transition-colors [color-scheme:light] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:[color-scheme:dark]"
               >
-                <option value="">Selecione um cliente</option>
+                <option value="" className="bg-background text-foreground">
+                  Selecione um cliente
+                </option>
                 {clientes.map((cliente) => (
-                  <option key={cliente.id} value={cliente.id}>
+                  <option key={cliente.id} value={cliente.id} className="bg-background text-foreground">
                     {cliente.nome}
                   </option>
                 ))}
