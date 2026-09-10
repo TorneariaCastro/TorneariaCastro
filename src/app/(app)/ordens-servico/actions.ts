@@ -273,6 +273,62 @@ export async function avancarStatus(
   const { error } = await supabase.from("ordens_servico").update(atualizacao).eq("id", ordemServicoId);
   if (error) return { error: "Não foi possível alterar o status." };
 
+  if (novoStatus === "faturado") {
+    await gerarContaAReceber(supabase, ordemServicoId);
+  }
+
   revalidarOrdem(ordemServicoId);
+  revalidatePath("/financeiro");
   return {};
+}
+
+/**
+ * Elo entre o serviço executado e o dinheiro: ao faturar a OS, cria a conta a
+ * receber correspondente no Financeiro. É lá que fica o botão de emitir a
+ * NFS-e, então sem isso a nota fiscal fica inalcançável.
+ *
+ * Não duplica: se já existe lançamento para a mesma OS, não cria outro.
+ */
+async function gerarContaAReceber(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ordemServicoId: string,
+): Promise<void> {
+  const { data: jaExiste } = await supabase
+    .from("transacoes_financeiras")
+    .select("id")
+    .eq("ordem_servico_id", ordemServicoId)
+    .eq("tipo", "receita")
+    .maybeSingle();
+
+  if (jaExiste) return;
+
+  const { data: os } = await supabase
+    .from("ordens_servico")
+    .select("numero, cliente_id, descricao_servico, itens_mao_de_obra(horas, valor_hora), itens_materiais(quantidade, valor_unitario)")
+    .eq("id", ordemServicoId)
+    .maybeSingle();
+
+  if (!os) return;
+
+  const maoDeObra = (os.itens_mao_de_obra ?? []) as Array<{ horas: number; valor_hora: number }>;
+  const materiais = (os.itens_materiais ?? []) as Array<{ quantidade: number; valor_unitario: number }>;
+  const valor =
+    maoDeObra.reduce((t, i) => t + i.horas * i.valor_hora, 0) +
+    materiais.reduce((t, i) => t + i.quantidade * i.valor_unitario, 0);
+
+  if (valor <= 0) return;
+
+  // Vencimento padrão: 30 dias. O prazo real pode ser ajustado no Financeiro.
+  const vencimento = new Date();
+  vencimento.setDate(vencimento.getDate() + 30);
+
+  await supabase.from("transacoes_financeiras").insert({
+    tipo: "receita",
+    descricao: `${os.numero} — ${os.descricao_servico}`,
+    cliente_id: os.cliente_id,
+    ordem_servico_id: ordemServicoId,
+    valor,
+    data_vencimento: vencimento.toISOString(),
+    status: "pendente",
+  });
 }

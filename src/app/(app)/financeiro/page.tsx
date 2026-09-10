@@ -6,6 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/status-badge";
 import { GerarCobrancaDialog } from "@/components/financeiro/gerar-cobranca-dialog";
 import { EmitirNfseButton } from "@/components/financeiro/emitir-nfse-button";
+import { NovaTransacaoDialog } from "@/components/financeiro/nova-transacao-dialog";
+import { TransacaoAcoes } from "@/components/financeiro/transacao-acoes";
+import { listClientes } from "@/lib/data/clientes";
 import { listTransacoes } from "@/lib/data/transacoes";
 import { listNotasFiscais } from "@/lib/data/notas-fiscais";
 import { LABEL_CATEGORIA_DESPESA } from "@/lib/types";
@@ -13,9 +16,10 @@ import { formatarData, formatarMoeda } from "@/lib/format";
 import { getSessao } from "@/lib/auth/session";
 
 export default async function FinanceiroPage() {
-  const [transacoes, notasFiscais, { isAdmin }] = await Promise.all([
+  const [transacoes, notasFiscais, clientes, { isAdmin }] = await Promise.all([
     listTransacoes(),
     listNotasFiscais(),
+    listClientes(),
     getSessao(),
   ]);
   const numeroNfsePorOrdemServico = new Map(notasFiscais.map((n) => [n.ordemServicoId, n.numero]));
@@ -32,9 +36,12 @@ export default async function FinanceiroPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Financeiro</h1>
-        <p className="text-sm text-muted-foreground">Contas a receber, contas a pagar e fluxo de caixa</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Financeiro</h1>
+          <p className="text-sm text-muted-foreground">Contas a receber, contas a pagar e fluxo de caixa</p>
+        </div>
+        {isAdmin && <NovaTransacaoDialog clientes={clientes} />}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -118,7 +125,10 @@ export default async function FinanceiroPage() {
                                 }
                               />
                             ) : (
-                              <GerarCobrancaDialog transacao={t} />
+                              <>
+                                <TransacaoAcoes transacaoId={t.id} status={t.status} />
+                                <GerarCobrancaDialog transacao={t} />
+                              </>
                             )}
                           </div>
                         </TableCell>
@@ -142,6 +152,7 @@ export default async function FinanceiroPage() {
                     <TableHead className="hidden md:table-cell">Vencimento</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
+                    {isAdmin && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -158,6 +169,13 @@ export default async function FinanceiroPage() {
                         <StatusBadge status={t.status} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{formatarMoeda(t.valor)}</TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <div className="flex items-center justify-end">
+                            <TransacaoAcoes transacaoId={t.id} status={t.status} />
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
