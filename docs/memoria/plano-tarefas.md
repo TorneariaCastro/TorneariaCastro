@@ -782,5 +782,202 @@ Erro de foreign key (`violates foreign key constraint`) = 🔴 Terminal. Signifi
 ## GitFlow
 Nenhum commit de código. O único arquivo alterado é este plano (documentação) — commit `docs: registra tarefa de limpeza das OS de teste`.
 
-## Dívida técnica registrada (não executar agora — decisão de Kleber em 2026-09-10)
-Kleber optou por **não** construir o botão "Excluir OS" nesta rodada. Fica anotado que o sistema não tem como apagar uma OS criada por engano, e que a numeração baseada em `count()` é frágil por natureza (o correto seria uma `sequence` no Postgres, igual já se fez com `nfse_rps_sequencial` na migration `0003`). Se a limpeza manual precisar acontecer uma terceira vez, isso vira fase de trabalho.
+## Dívida técnica registrada (decisão de Kleber em 2026-09-10)
+Kleber optou por **não** construir o botão "Excluir OS" nesta rodada. Fica anotado que o sistema não tem como apagar uma OS criada por engano. **A parte da numeração deixou de ser dívida** — Kleber aprovou a correção no mesmo dia, planejada abaixo (Fase 02.7).
+
+---
+---
+
+# Plano de Tarefas — FASE 02.7: NUMERAÇÃO DE OS À PROVA DE COLISÃO
+
+## Contexto
+
+Decisão arquitetural completa em `docs/decisions/ADR-001-numeracao-de-ordens-de-servico.md` — leia antes de executar. Resumo: `proximoNumero()` gera o número contando linhas, e contagem anda para trás. Apagar um subconjunto de OS, ou criar duas ao mesmo tempo, gera um `numero` que já existe e a constraint `unique` derruba a criação com a mensagem genérica `"Não foi possível criar a ordem de serviço."`.
+
+Aprovado por Kleber em 2026-09-10, depois da limpeza das 4 OS de teste que expôs o problema.
+
+**Por que agora:** `ordens_servico` está com **0 linhas**. O contador nasce zerado, sem precisar ser calibrado a partir de dados reais. Daqui a seis meses, com OS de verdade no sistema, a mesma correção exigiria semear o contador e conferir colisões — cirurgia em vez de curativo.
+
+## Verificações feitas nesta sessão (não presumidas — protocolo de memória cética)
+
+Confirmado por leitura direta dos arquivos:
+
+| O quê | Onde | Estado |
+|---|---|---|
+| Função que gera o número | `src/app/(app)/ordens-servico/actions.ts:13-21` | conta linhas via `count: "exact"` |
+| Único consumidor da função | `src/app/(app)/ordens-servico/actions.ts:42` (`criarOrdemServico`) | `const numero = await proximoNumero(supabase)` |
+| Constraint que derruba a colisão | `supabase/migrations/0001_init.sql` | `numero text not null unique` |
+| Padrão correto já em produção | `supabase/migrations/0003_nfse_rps_sequencial.sql` | `security definer` + `set search_path` + `grant execute to authenticated` |
+| Como o código chama esse padrão | `src/lib/services/nfse/sefin-nacional-nfse-service.ts:133` | `await supabase.rpc("nextval_nfse_rps_sequencial")` |
+| Padrão de checagem de papel | `supabase/migrations/0002_roles.sql` | `public.is_administrador()` |
+| Estado do banco | consulta REST em 2026-09-10 | `ordens_servico`: 0 linhas |
+
+**Atlas: você não vai inventar padrão nenhum aqui.** A migration `0003` é a receita. Copie a estrutura dela.
+
+## Pré-condições
+- [ ] `git checkout dev && git pull origin dev`
+- [ ] Nenhuma credencial nova. Nenhum custo novo. Nenhuma dependência nova.
+
+---
+
+## PASSO 1 — Migration `supabase/migrations/0007_numeracao_os.sql`
+
+```sql
+-- Numeracao de OS a prova de colisao.
+-- Antes: proximoNumero() contava linhas do ano no Node. Contagem anda para tras,
+-- entao apagar uma OS (ou criar duas ao mesmo tempo) gerava um numero ja existente
+-- e a constraint unique de ordens_servico.numero derrubava a criacao.
+-- Ver docs/decisions/ADR-001-numeracao-de-ordens-de-servico.md
+
+create table if not exists os_contador (
+  ano int primary key,
+  ultimo_numero int not null default 0
+);
+
+alter table os_contador enable row level security;
+
+-- Nenhuma policy, de proposito: o acesso e exclusivamente pela funcao
+-- security definer abaixo, que roda como dona da tabela e nao passa por RLS.
+-- Cliente autenticado nao le nem escreve nesta tabela diretamente.
+
+-- Semeadura a partir do que ja existe, por ano. Hoje ordens_servico esta vazia,
+-- mas isso mantem a migration correta caso alguma OS seja criada antes de aplicar.
+insert into os_contador (ano, ultimo_numero)
+select
+  (regexp_replace(numero, '^OS-([0-9]{4})-[0-9]+$', '\1'))::int as ano,
+  max((regexp_replace(numero, '^OS-[0-9]{4}-([0-9]+)$', '\1'))::int) as ultimo_numero
+from ordens_servico
+where numero ~ '^OS-[0-9]{4}-[0-9]+$'
+group by 1
+on conflict (ano) do update
+  set ultimo_numero = greatest(os_contador.ultimo_numero, excluded.ultimo_numero);
+
+-- Incrementa e devolve o proximo numero numa unica instrucao atomica.
+-- Fuso de Sao Paulo de proposito: now() no Postgres e UTC, entao entre 21h e 24h
+-- de 31/dezembro (horario de Brasilia) o ano viraria antes da hora.
+create or replace function public.proximo_numero_os()
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ano int := extract(year from timezone('America/Sao_Paulo', now()))::int;
+  v_num int;
+begin
+  if not public.is_administrador() then
+    raise exception 'Apenas administradores podem gerar numero de ordem de servico.'
+      using errcode = '42501';
+  end if;
+
+  insert into os_contador (ano, ultimo_numero)
+  values (v_ano, 1)
+  on conflict (ano) do update
+    set ultimo_numero = os_contador.ultimo_numero + 1
+  returning ultimo_numero into v_num;
+
+  return 'OS-' || v_ano::text || '-' || lpad(v_num::text, 4, '0');
+end;
+$$;
+
+grant execute on function public.proximo_numero_os() to authenticated;
+```
+
+Três detalhes que **não** são enfeite:
+
+- **`security definer` + `set search_path = public`** — sem o `search_path` fixo, a função é vulnerável a sequestro de resolução de nomes. A `0003` já faz assim; siga.
+- **`if not public.is_administrador()`** — o `grant` é para `authenticated`, o que inclui consultor. Sem essa checagem, um consultor poderia chamar a função direto pela API e queimar números, criando buracos na numeração. Não vaza dado nem grava OS, mas é sujeira gratuita — e o Kerberos ia apontar.
+- **`on conflict ... returning` numa única instrução** — é isso que torna a operação atômica. Não substitua por `select` seguido de `update`: aí o problema de concorrência volta, só que mais difícil de enxergar.
+
+**Aplicação:** Supabase MCP não está conectado. Mesmo caminho das migrations 0001–0006 — mas **não peça a Kleber para colar SQL sem antes tentar você mesmo**: a `service_role key` está em `.env.local` e a REST API aceita execução de SQL arbitrário apenas se existir uma função RPC para isso (não existe). Portanto: entregue o SQL pronto, Kleber cola no SQL Editor do Supabase (conta `telascastroclaudia@gmail.com`), e **você confirma por consulta real** — nunca aceite "apliquei" como prova.
+
+Confirmação obrigatória após a aplicação:
+```
+GET /rest/v1/rpc/proximo_numero_os   → deve responder (nao 404)
+```
+Se responder `404`, a função não existe e a migration não foi aplicada de fato.
+
+---
+
+## PASSO 2 — Trocar `proximoNumero()` em `src/app/(app)/ordens-servico/actions.ts`
+
+Substituir o corpo da função (linhas 13-21). O nome e o local ficam iguais — só o miolo muda:
+
+```ts
+async function proximoNumero(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
+  const { data, error } = await supabase.rpc("proximo_numero_os");
+  if (error || typeof data !== "string") return null;
+  return data;
+}
+```
+
+Em `criarOrdemServico` (linha 42), tratar o caso nulo no padrão de erro que o arquivo já usa:
+
+```ts
+const numero = await proximoNumero(supabase);
+if (!numero) {
+  return { error: "Não foi possível gerar o número da ordem de serviço." };
+}
+```
+
+**Não** deixe a função lançar exceção: `criarOrdemServico` é Server Action e uma exceção não tratada vira erro genérico de servidor na cara de Kleber, exatamente o sintoma que esta fase existe para eliminar.
+
+O `import` de `createClient` já existe no arquivo. Nada mais muda — `criarOrdemServico` continua inserindo do mesmo jeito.
+
+---
+
+## PASSO 3 — Verificação Critic
+
+```bash
+npx tsc --noEmit
+npm run build
+```
+Ambos limpos. Nenhum outro arquivo deveria precisar mudar — `proximoNumero` tem um único consumidor, confirmado por grep nesta sessão.
+
+---
+
+## PASSO 4 — Teste funcional real (não pular, é o passo que prova a fase)
+
+Executar **depois** da migration aplicada e do deploy, com sessão administrativa real (mesmo método das fases anteriores: magic link via Admin API, sem senha).
+
+**4.1 — Numeração parte do zero**
+Criar uma OS pela tela. Deve nascer `OS-2026-0001`.
+
+**4.2 — O buraco é real (o teste que prova a correção)**
+Apagar a `OS-2026-0001` direto no banco. Criar outra OS pela tela.
+- ✅ Esperado: `OS-2026-0002` — o número 1 **não** volta.
+- ❌ Se vier `OS-2026-0001` de novo, a função não está sendo usada e o código antigo continua ativo.
+
+Este é o cenário exato que quebrava o sistema antes. Se passar, a fase está entregue.
+
+**4.3 — Consultor não queima número**
+Chamar `POST /rest/v1/rpc/proximo_numero_os` com um JWT de consultor. Esperado: erro `42501`, e `os_contador.ultimo_numero` **inalterado**.
+
+**4.4 — Limpeza**
+Apagar as OS de teste criadas. Deixar `ordens_servico` como estava: **0 linhas**. O `os_contador` fica com o valor que chegou — isso é correto e esperado, não "restaure" o contador.
+
+---
+
+## Critério de Aceitação
+
+- [ ] `npx tsc --noEmit` e `npm run build` limpos
+- [ ] Migration `0007` aplicada e confirmada por chamada real à RPC (não por relato)
+- [ ] Teste 4.1: primeira OS nasce `OS-2026-0001`
+- [ ] **Teste 4.2: após apagar a 0001, a próxima é `OS-2026-0002`** ← o teste central
+- [ ] Teste 4.3: consultor recebe `42501` e o contador não se move
+- [ ] `ordens_servico` de volta a 0 linhas ao final
+- [ ] `docs/asbuilt.md` atualizado
+
+## Em caso de erro
+
+- Erro de sintaxe/permissão no SQL = 🔴 Terminal. Copie a mensagem exata do Postgres e reporte a Hades — não ajuste o SQL por tentativa e erro.
+- Se o teste 4.2 reusar o número: a RPC não está sendo chamada. Verifique se o deploy realmente subiu antes de testar (erro recorrente neste projeto — já aconteceu em 2026-09-09). Não é bug de banco.
+- Regra das 2 tentativas vale. Após duas, escale com Protocolo de RCA.
+
+## Relatório obrigatório ao concluir
+
+Formato padrão: **STATUS** / **STEPS EXECUTADOS** / **OUTPUT DO TERMINAL** (sem resumir) / **ESTADO ATUAL** (`git status` + `git log --oneline -3`) / **ERROS ENCONTRADOS** (mensagem exata) / **EVIDÊNCIA** — em especial o número que saiu no teste 4.2.
+
+## GitFlow
+
+Atlas trabalha em `dev`. Dois commits separados: (1) `feat: numeracao de OS a prova de colisao` (migration + código), (2) `docs: ADR-001 e atualizacao do asbuilt`. Nada de `hml`/`main` sem aprovação explícita de Kleber + backup por tag.
