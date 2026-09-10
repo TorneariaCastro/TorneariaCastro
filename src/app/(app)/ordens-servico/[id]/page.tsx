@@ -83,6 +83,7 @@ export default async function OrdemServicoDetalhePage({ params }: { params: Prom
         <CardContent>
           <ItensLancamentos
             ordemServicoId={os.id}
+            servicos={os.servicos}
             maoDeObra={os.maoDeObra}
             materiais={os.materiais}
             podeEditar={isAdmin && !os.aprovadoEm}

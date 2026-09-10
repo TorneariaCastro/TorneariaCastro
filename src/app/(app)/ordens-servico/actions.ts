@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { calcularTotalOrdemServico } from "@/lib/data/ordens-servico";
 import { getSessao } from "@/lib/auth/session";
 import type { StatusOrdemServico } from "@/lib/types";
 
@@ -154,6 +155,38 @@ function revalidarOrdem(ordemServicoId: string) {
   revalidatePath("/dashboard");
 }
 
+/**
+ * Preço fechado: o que o cliente compra, sem abrir a formação de preço.
+ * Sem campo de unidade — serviço fechado se conta em peças.
+ */
+export async function adicionarServico(ordemServicoId: string, formData: FormData): Promise<ItemState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) return { error: "Consultores não podem lançar valores." };
+
+  const descricao = String(formData.get("descricao") ?? "").trim();
+  const quantidade = Number(String(formData.get("quantidade") ?? "").replace(",", "."));
+  const valorUnitario = Number(String(formData.get("valorUnitario") ?? "").replace(",", "."));
+
+  if (!descricao) return { error: "Descreva o serviço." };
+  if (!Number.isFinite(quantidade) || quantidade <= 0) return { error: "Informe a quantidade." };
+  if (!Number.isFinite(valorUnitario) || valorUnitario <= 0) return { error: "Informe o valor unitário." };
+
+  const supabase = await createClient();
+  const bloqueio = await garantirEdicaoPermitida(supabase, ordemServicoId);
+  if (bloqueio) return { error: bloqueio };
+
+  const { error } = await supabase.from("itens_servico").insert({
+    ordem_servico_id: ordemServicoId,
+    descricao,
+    quantidade,
+    valor_unitario: valorUnitario,
+  });
+  if (error) return { error: "Não foi possível lançar o serviço." };
+
+  revalidarOrdem(ordemServicoId);
+  return {};
+}
+
 export async function adicionarMaoDeObra(ordemServicoId: string, formData: FormData): Promise<ItemState> {
   const { isAdmin } = await getSessao();
   if (!isAdmin) return { error: "Consultores não podem lançar valores." };
@@ -212,8 +245,14 @@ export async function adicionarMaterial(ordemServicoId: string, formData: FormDa
   return {};
 }
 
+const TABELA_POR_TIPO = {
+  servico: "itens_servico",
+  mao_de_obra: "itens_mao_de_obra",
+  material: "itens_materiais",
+} as const;
+
 export async function removerItem(
-  tipo: "mao_de_obra" | "material",
+  tipo: keyof typeof TABELA_POR_TIPO,
   itemId: string,
   ordemServicoId: string,
 ): Promise<ItemState> {
@@ -224,8 +263,7 @@ export async function removerItem(
   const bloqueio = await garantirEdicaoPermitida(supabase, ordemServicoId);
   if (bloqueio) return { error: bloqueio };
 
-  const tabela = tipo === "mao_de_obra" ? "itens_mao_de_obra" : "itens_materiais";
-  const { error } = await supabase.from(tabela).delete().eq("id", itemId);
+  const { error } = await supabase.from(TABELA_POR_TIPO[tipo]).delete().eq("id", itemId);
   if (error) return { error: "Não foi possível remover o lançamento." };
 
   revalidarOrdem(ordemServicoId);
@@ -304,17 +342,15 @@ async function gerarContaAReceber(
 
   const { data: os } = await supabase
     .from("ordens_servico")
-    .select("numero, cliente_id, descricao_servico, itens_mao_de_obra(horas, valor_hora), itens_materiais(quantidade, valor_unitario)")
+    .select("numero, cliente_id, descricao_servico")
     .eq("id", ordemServicoId)
     .maybeSingle();
 
   if (!os) return;
 
-  const maoDeObra = (os.itens_mao_de_obra ?? []) as Array<{ horas: number; valor_hora: number }>;
-  const materiais = (os.itens_materiais ?? []) as Array<{ quantidade: number; valor_unitario: number }>;
-  const valor =
-    maoDeObra.reduce((t, i) => t + i.horas * i.valor_hora, 0) +
-    materiais.reduce((t, i) => t + i.quantidade * i.valor_unitario, 0);
+  // Fonte única do total (serviço + mão de obra + materiais). Não duplicar a
+  // fórmula aqui: divergir do que a tela mostra vira cobrança e nota erradas.
+  const valor = await calcularTotalOrdemServico(supabase, ordemServicoId);
 
   if (valor <= 0) return;
 

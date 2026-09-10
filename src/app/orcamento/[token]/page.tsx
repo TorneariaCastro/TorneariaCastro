@@ -2,15 +2,20 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { calcularTotalOrdemServico } from "@/lib/data/ordens-servico";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { AprovarRecusarButtons } from "./aprovar-recusar-buttons";
 
+/**
+ * O que o cliente pode ver: o que ele está comprando (linhas de serviço) e o
+ * total. Mão de obra e materiais são formação de preço — não saem do servidor.
+ */
 interface OrcamentoPublico {
   numero: string;
   clienteNome: string;
   descricaoServico: string;
-  maoDeObra: { descricao: string; horas: number; valor_hora: number }[];
-  materiais: { descricao: string; quantidade: number; unidade: string; valor_unitario: number }[];
+  servicos: { descricao: string; quantidade: number; valor_unitario: number }[];
+  valorTotal: number;
   aprovadoEm: string | null;
   recusadoEm: string | null;
   linkExpiraEm: string | null;
@@ -21,7 +26,7 @@ async function buscarOrcamentoPorToken(token: string): Promise<OrcamentoPublico 
   const { data, error } = await supabase
     .from("ordens_servico")
     .select(
-      "numero, descricao_servico, aprovado_em, recusado_em, link_expira_em, clientes(nome), itens_mao_de_obra(descricao, horas, valor_hora), itens_materiais(descricao, quantidade, unidade, valor_unitario)",
+      "id, numero, descricao_servico, aprovado_em, recusado_em, link_expira_em, clientes(nome), itens_servico(descricao, quantidade, valor_unitario)",
     )
     .eq("token_compartilhamento", token)
     .maybeSingle();
@@ -35,8 +40,8 @@ async function buscarOrcamentoPorToken(token: string): Promise<OrcamentoPublico 
     numero: data.numero,
     clienteNome,
     descricaoServico: data.descricao_servico,
-    maoDeObra: data.itens_mao_de_obra ?? [],
-    materiais: data.itens_materiais ?? [],
+    servicos: data.itens_servico ?? [],
+    valorTotal: await calcularTotalOrdemServico(supabase, data.id),
     aprovadoEm: data.aprovado_em,
     recusadoEm: data.recusado_em,
     linkExpiraEm: data.link_expira_em,
@@ -66,13 +71,6 @@ export default async function OrcamentoPublicoPage({ params }: { params: Promise
     );
   }
 
-  const valorMaoDeObra = orcamento.maoDeObra.reduce((total, item) => total + item.horas * item.valor_hora, 0);
-  const valorMateriais = orcamento.materiais.reduce(
-    (total, item) => total + item.quantidade * item.valor_unitario,
-    0,
-  );
-  const valorTotal = valorMaoDeObra + valorMateriais;
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-lg">
@@ -83,45 +81,20 @@ export default async function OrcamentoPublicoPage({ params }: { params: Promise
         <CardContent className="space-y-6">
           <p className="text-sm">{orcamento.descricaoServico}</p>
 
-          {orcamento.maoDeObra.length > 0 && (
+          {orcamento.servicos.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mão de obra</TableHead>
-                  <TableHead className="text-right">Horas</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orcamento.maoDeObra.map((item, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{item.descricao}</TableCell>
-                    <TableCell className="text-right">{item.horas}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatarMoeda(item.horas * item.valor_hora)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          {orcamento.materiais.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Materiais</TableHead>
+                  <TableHead>Serviço</TableHead>
                   <TableHead className="text-right">Qtd.</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orcamento.materiais.map((item, i) => (
+                {orcamento.servicos.map((item, i) => (
                   <TableRow key={i}>
                     <TableCell>{item.descricao}</TableCell>
-                    <TableCell className="text-right">
-                      {item.quantidade} {item.unidade}
-                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{item.quantidade}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatarMoeda(item.quantidade * item.valor_unitario)}
                     </TableCell>
@@ -133,7 +106,7 @@ export default async function OrcamentoPublicoPage({ params }: { params: Promise
 
           <div className="flex items-center justify-between border-t pt-4">
             <span className="text-sm font-medium">Valor total</span>
-            <span className="text-xl font-semibold tabular-nums">{formatarMoeda(valorTotal)}</span>
+            <span className="text-xl font-semibold tabular-nums">{formatarMoeda(orcamento.valorTotal)}</span>
           </div>
 
           {orcamento.aprovadoEm && (

@@ -14,6 +14,14 @@ export const PIPELINE_ORDEM_SERVICO: StatusOrdemServico[] = [
   "faturado",
 ];
 
+/** Preço fechado: o que o cliente compra, sem abrir horas nem custo de material. */
+export interface ItemServico {
+  id: string;
+  descricao: string;
+  quantidade: number;
+  valorUnitario: number;
+}
+
 export interface ItemMaoDeObra {
   id: string;
   descricao: string;
@@ -36,6 +44,7 @@ export interface OrdemServico {
   clienteNome: string;
   status: StatusOrdemServico;
   descricaoServico: string;
+  servicos: ItemServico[];
   maoDeObra: ItemMaoDeObra[];
   materiais: ItemMaterial[];
   dataAbertura: string;
@@ -48,6 +57,10 @@ export interface OrdemServico {
   linkExpiraEm?: string;
 }
 
+export function calcularValorServicos(os: Pick<OrdemServico, "servicos">): number {
+  return os.servicos.reduce((total, item) => total + item.quantidade * item.valorUnitario, 0);
+}
+
 export function calcularValorMaoDeObra(os: Pick<OrdemServico, "maoDeObra">): number {
   return os.maoDeObra.reduce((total, item) => total + item.horas * item.valorHora, 0);
 }
@@ -56,6 +69,8 @@ export function calcularValorMateriais(os: Pick<OrdemServico, "materiais">): num
   return os.materiais.reduce((total, item) => total + item.quantidade * item.valorUnitario, 0);
 }
 
-export function calcularValorTotal(os: Pick<OrdemServico, "maoDeObra" | "materiais">): number {
-  return calcularValorMaoDeObra(os) + calcularValorMateriais(os);
+export function calcularValorTotal(
+  os: Pick<OrdemServico, "servicos" | "maoDeObra" | "materiais">,
+): number {
+  return calcularValorServicos(os) + calcularValorMaoDeObra(os) + calcularValorMateriais(os);
 }
