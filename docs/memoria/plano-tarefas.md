@@ -674,3 +674,113 @@ Parar e reportar a Hades com o output completo do terminal — sem resumir, sem 
 
 ## GitFlow
 Atlas trabalha em `dev`. Commits separados: (1) feature, (2) manual. Nada de merge para `hml` ou `main` sem aprovação explícita de Kleber + backup por tag.
+
+---
+---
+
+# TAREFA AVULSA — LIMPEZA DAS OS DE TESTE (2026-09-10)
+
+## Contexto
+
+Kleber pediu a remoção das 4 ordens de serviço de teste que estão no banco de produção. Não é uma fase de produto — é limpeza de dado. **Nenhuma linha de código muda.** Não há commit, não há build, não há deploy.
+
+As 4 OS (todas em status `orcado`, todas do cliente Kleber Pereira, todas R$ 0,00):
+
+| Número | Descrição | Abertura |
+|---|---|---|
+| OS-2026-0001 | Teste XPTO | 09/09/2026 |
+| OS-2026-0002 | Usinagem Eixo XPTO | 09/09/2026 |
+| OS-2026-0003 | Usinagem Kleber Pereira XPTO. Valor do serviço R$800,00 | 09/09/2026 |
+| OS-2026-0004 | Teste... | 10/09/2026 |
+
+## Verificações feitas nesta sessão (não presumidas — protocolo de memória cética)
+
+**1. Não existe função de exclusão de OS no sistema.** Conferido em `src/app/(app)/ordens-servico/actions.ts` — as exportações são `criarOrdemServico`, `compartilharOrcamento`, `converterEmServico`, `adicionarServico`, `adicionarMaoDeObra`, `adicionarMaterial`, `removerItem`, `avancarStatus`, `editarOrdemServico`. `removerItem` remove **lançamentos dentro** de uma OS, não a OS. Kleber confirmou que procurou o botão e não achou — ele está certo, o botão não existe. Por isso a limpeza é via SQL, não via UI.
+
+**2. Existe "Cancelar OS"** (`src/app/(app)/ordens-servico/[id]/status-acoes.tsx:100`), transição `orcado → cancelado` permitida (`TRANSICOES_PERMITIDAS`, linha 280). Mas cancelar mantém a OS na lista. Kleber decidiu apagar de fato, não cancelar.
+
+**3. ⚠️ A numeração é frágil — leia antes de apagar.**
+`proximoNumero` (`actions.ts:13-21`) gera o número **contando as OS do ano e somando 1**:
+```ts
+const sequencial = String((count ?? 0) + 1).padStart(4, "0");
+```
+Consequência: apagar **todas as 4** é seguro (contagem volta a 0, a próxima OS real nasce `OS-2026-0001`). Apagar **apenas algumas** quebra o sistema — a contagem passa a gerar um `numero` que já existe e a constraint `unique` derruba a criação da próxima OS com o erro genérico `"Não foi possível criar a ordem de serviço."`.
+**Portanto: apagar as 4, ou nenhuma. Nunca um subconjunto.**
+
+**4. Dependências que podem bloquear o DELETE:** em `supabase/migrations/0001_init.sql`, `itens_mao_de_obra` e `itens_materiais` têm `on delete cascade` (somem junto, sem esforço) — e `itens_servico` também (`0006_itens_servico.sql`). Mas `transacoes_financeiras.ordem_servico_id` e `notas_fiscais.ordem_servico_id` **não têm cascade** — se houver qualquer registro apontando para essas OS, o DELETE falha com erro de foreign key. Isso é uma rede de proteção, não um bug: significa que o banco se recusa a apagar uma OS que já virou dinheiro ou nota fiscal. Não contorne com `cascade`.
+
+Kleber afirmou que as 4 estão vazias (o R$ 0,00 na tela é consistente com isso), mas **confirme no PASSO 2 antes de apagar** — apagar não tem desfazer.
+
+## Pré-condições
+- [ ] Nenhuma. Não depende de código, branch, build ou credencial nova.
+
+## PASSO 1 — Conferir o que existe (rodar antes de qualquer coisa)
+
+```sql
+select numero, status, descricao_servico, data_abertura
+from ordens_servico
+where numero in ('OS-2026-0001','OS-2026-0002','OS-2026-0003','OS-2026-0004')
+order by numero;
+```
+Esperado: exatamente 4 linhas, todas `orcado`. Se vier número diferente de 4, ou alguma com status diferente de `orcado`, **PARAR e reportar** — o banco não está no estado que este plano presume.
+
+## PASSO 2 — Conferir o que está pendurado nelas
+
+```sql
+with alvo as (
+  select id from ordens_servico
+  where numero in ('OS-2026-0001','OS-2026-0002','OS-2026-0003','OS-2026-0004')
+)
+select 'itens_servico'          as tabela, count(*) from itens_servico          where ordem_servico_id in (select id from alvo)
+union all
+select 'itens_mao_de_obra',           count(*) from itens_mao_de_obra           where ordem_servico_id in (select id from alvo)
+union all
+select 'itens_materiais',             count(*) from itens_materiais             where ordem_servico_id in (select id from alvo)
+union all
+select 'transacoes_financeiras',      count(*) from transacoes_financeiras      where ordem_servico_id in (select id from alvo)
+union all
+select 'notas_fiscais',               count(*) from notas_fiscais               where ordem_servico_id in (select id from alvo);
+```
+
+- Itens (`itens_servico` / `itens_mao_de_obra` / `itens_materiais`) com contagem > 0: **ok**, somem em cascata junto com a OS.
+- `transacoes_financeiras` ou `notas_fiscais` com contagem > 0: 🔴 **PARAR e reportar a Kleber antes de apagar.** Isso significa que uma dessas "OS de teste" gerou movimento financeiro ou nota fiscal — apagar destruiria histórico contábil. Não force, não use `cascade`, não delete a transação junto por conta própria.
+
+## PASSO 3 — Apagar (só se o PASSO 2 estiver limpo)
+
+```sql
+delete from ordens_servico
+where numero in ('OS-2026-0001','OS-2026-0002','OS-2026-0003','OS-2026-0004');
+```
+
+Listar os números explicitamente. **Nunca** `delete from ordens_servico` sem `where`, nem filtrar por `descricao_servico ilike '%teste%'` — descrição é texto livre e uma OS real pode conter a palavra.
+
+## PASSO 4 — Confirmar por consulta real (não por relato)
+
+```sql
+select count(*) as total_os from ordens_servico;
+```
+Esperado: `0`.
+
+Depois, Kleber recarrega `/ordens-servico` no navegador e confirma: "0 ordens registradas", tabela vazia, todos os cards de status zerados.
+
+## PASSO 5 — Teste da numeração (importante, não pular)
+
+Depois da limpeza, criar **uma** OS de verdade (ou de teste, e apagá-la de novo pelo mesmo processo) e confirmar que ela nasce como **`OS-2026-0001`**. Isso prova que a numeração se recompôs e que a próxima OS real do Kleber não vai bater em erro.
+
+## Aplicação
+Supabase MCP não está conectado nesta sessão (mesma situação das migrations 0001–0006). Atlas entrega o SQL pronto e Kleber cola no SQL Editor do Supabase (conta `telascastroclaudia@gmail.com`), um passo de cada vez, colando o resultado de volta. Atlas **não** aceita "apliquei" como prova — confirma pelo resultado do PASSO 4.
+
+## Critério de Aceitação
+- [ ] PASSO 2 executado e resultado registrado **antes** de qualquer `delete`
+- [ ] `select count(*) from ordens_servico` retorna `0`
+- [ ] Tela `/ordens-servico` mostra "0 ordens registradas"
+- [ ] Próxima OS criada nasce como `OS-2026-0001`
+
+## Em caso de erro
+Erro de foreign key (`violates foreign key constraint`) = 🔴 Terminal. Significa que existe transação financeira ou nota fiscal ligada à OS. **Parar, reportar a Kleber com a mensagem exata**, não contornar.
+
+## GitFlow
+Nenhum commit de código. O único arquivo alterado é este plano (documentação) — commit `docs: registra tarefa de limpeza das OS de teste`.
+
+## Dívida técnica registrada (não executar agora — decisão de Kleber em 2026-09-10)
+Kleber optou por **não** construir o botão "Excluir OS" nesta rodada. Fica anotado que o sistema não tem como apagar uma OS criada por engano, e que a numeração baseada em `count()` é frágil por natureza (o correto seria uma `sequence` no Postgres, igual já se fez com `nfse_rps_sequencial` na migration `0003`). Se a limpeza manual precisar acontecer uma terceira vez, isso vira fase de trabalho.
