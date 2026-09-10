@@ -153,7 +153,9 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 
 **Testável:** ✅ testado e aprovado no ambiente local contra o banco real (ver acima).
 **Notas:** Custo zero — sem dependência nova, sem serviço novo, sem credencial nova.
-**Pendente antes de produção:** QA da Ravena (fluxo completo com sessão real) e auditoria do Kerberos (mudança de exposição de dados numa rota pública). Depois, ciclo `dev → hml → main` com backup por tag e aprovação explícita de Kleber.
+**QA da Ravena (2026-09-10) — APROVADO COM RESSALVA, ressalva já corrigida.** Ela aprovou o lançamento, a soma dos três blocos, a vírgula, o compartilhamento e — com a palavra "SEGREDO DA CASA" plantada nos itens internos — confirmou zero vazamento no que sai do servidor. Encontrou um defeito de produto que o plano do Hades não previu: no uso **misto**, o cliente via uma linha de R$ 800,00 e um total de R$ 1.020,00, com R$ 220,00 sem explicação. Não lia como discrição, lia como erro de conta. **Decisão do Hades:** linha agregada fechando a diferença, com rótulo fiel ao que foi lançado (`Materiais e execução` / `Materiais` / `Execução do serviço`). Corrigido e verificado nos 5 casos possíveis — o total sempre bate com a soma das linhas visíveis. A conta a receber foi refeita de ponta a ponta após a refatoração (R$ 1.020,00, correto). **Não testado:** responsividade — o Chrome ignorou dois pedidos de redimensionamento; Kleber vai conferir no próprio celular.
+
+**Pendente antes de produção:** re-teste da Ravena e auditoria do Kerberos (mudança de exposição de dados numa rota pública). Depois, ciclo `dev → hml → main` com backup por tag e aprovação explícita de Kleber.
 **Último trabalho:** Commits `a41437c` (feature) e `4f26c3a` (docs/manual) em `dev`, push feito, working tree limpo.
 
 ---

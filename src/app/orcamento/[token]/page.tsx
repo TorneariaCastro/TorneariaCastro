@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { calcularTotalOrdemServico } from "@/lib/data/ordens-servico";
+import { calcularValoresOrdemServico } from "@/lib/data/ordens-servico";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { AprovarRecusarButtons } from "./aprovar-recusar-buttons";
 
@@ -15,6 +15,12 @@ interface OrcamentoPublico {
   clienteNome: string;
   descricaoServico: string;
   servicos: { descricao: string; quantidade: number; valor_unitario: number }[];
+  /**
+   * Mão de obra e materiais somados numa linha só. O cliente precisa ver de
+   * onde vem cada real do total — um total maior que a soma das linhas parece
+   * erro de conta, não discrição. Vai só o valor agregado, nunca os itens.
+   */
+  outrosValores: { rotulo: string; valor: number } | null;
   valorTotal: number;
   aprovadoEm: string | null;
   recusadoEm: string | null;
@@ -36,16 +42,35 @@ async function buscarOrcamentoPorToken(token: string): Promise<OrcamentoPublico 
   const clientesRow = data.clientes as { nome: string } | { nome: string }[] | null;
   const clienteNome = Array.isArray(clientesRow) ? (clientesRow[0]?.nome ?? "") : (clientesRow?.nome ?? "");
 
+  const valores = await calcularValoresOrdemServico(supabase, data.id);
+
   return {
     numero: data.numero,
     clienteNome,
     descricaoServico: data.descricao_servico,
     servicos: data.itens_servico ?? [],
-    valorTotal: await calcularTotalOrdemServico(supabase, data.id),
+    outrosValores: montarOutrosValores(valores.maoDeObra, valores.materiais),
+    valorTotal: valores.total,
     aprovadoEm: data.aprovado_em,
     recusadoEm: data.recusado_em,
     linkExpiraEm: data.link_expira_em,
   };
+}
+
+/**
+ * O rótulo acompanha o que realmente foi lançado. Dizer "Materiais e execução"
+ * numa ordem sem material nenhum seria afirmar algo falso ao cliente.
+ */
+function montarOutrosValores(
+  maoDeObra: number,
+  materiais: number,
+): { rotulo: string; valor: number } | null {
+  const valor = maoDeObra + materiais;
+  if (valor <= 0) return null;
+
+  if (maoDeObra > 0 && materiais > 0) return { rotulo: "Materiais e execução", valor };
+  if (materiais > 0) return { rotulo: "Materiais", valor };
+  return { rotulo: "Execução do serviço", valor };
 }
 
 export default async function OrcamentoPublicoPage({ params }: { params: Promise<{ token: string }> }) {
@@ -81,7 +106,7 @@ export default async function OrcamentoPublicoPage({ params }: { params: Promise
         <CardContent className="space-y-6">
           <p className="text-sm">{orcamento.descricaoServico}</p>
 
-          {orcamento.servicos.length > 0 && (
+          {(orcamento.servicos.length > 0 || orcamento.outrosValores) && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -100,6 +125,15 @@ export default async function OrcamentoPublicoPage({ params }: { params: Promise
                     </TableCell>
                   </TableRow>
                 ))}
+                {orcamento.outrosValores && (
+                  <TableRow>
+                    <TableCell>{orcamento.outrosValores.rotulo}</TableCell>
+                    <TableCell className="text-right" />
+                    <TableCell className="text-right tabular-nums">
+                      {formatarMoeda(orcamento.outrosValores.valor)}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           )}

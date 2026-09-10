@@ -99,17 +99,30 @@ export async function listOrdensServicoPorCliente(clienteId: string): Promise<Or
   return (data as unknown as OrdemServicoRow[]).map(toOrdemServico);
 }
 
+export interface ValoresOrdemServico {
+  servicos: number;
+  maoDeObra: number;
+  materiais: number;
+  total: number;
+}
+
 /**
- * Fonte única do valor total quando só existe o id da OS (sem o objeto carregado).
+ * Fonte única dos valores quando só existe o id da OS (sem o objeto carregado).
  * Existe para que a conta a receber e a página pública do orçamento nunca
  * divirjam do que a tela mostra — a fórmula vive num lugar só.
  *
+ * Devolve o total já separado por bloco porque a página pública precisa saber
+ * QUANTO veio de mão de obra e materiais para fechar a conta na frente do
+ * cliente — sem nunca enviar os itens em si ao navegador dele.
+ *
  * Aceita tanto o client autenticado quanto o de service role (página pública).
  */
-export async function calcularTotalOrdemServico(
+export async function calcularValoresOrdemServico(
   supabase: SupabaseClient,
   ordemServicoId: string,
-): Promise<number> {
+): Promise<ValoresOrdemServico> {
+  const vazio = { servicos: 0, maoDeObra: 0, materiais: 0, total: 0 };
+
   const { data } = await supabase
     .from("ordens_servico")
     .select(
@@ -118,17 +131,25 @@ export async function calcularTotalOrdemServico(
     .eq("id", ordemServicoId)
     .maybeSingle();
 
-  if (!data) return 0;
+  if (!data) return vazio;
 
-  const servicos = (data.itens_servico ?? []) as Array<{ quantidade: number; valor_unitario: number }>;
-  const maoDeObra = (data.itens_mao_de_obra ?? []) as Array<{ horas: number; valor_hora: number }>;
-  const materiais = (data.itens_materiais ?? []) as Array<{ quantidade: number; valor_unitario: number }>;
+  const itensServico = (data.itens_servico ?? []) as Array<{ quantidade: number; valor_unitario: number }>;
+  const itensMaoDeObra = (data.itens_mao_de_obra ?? []) as Array<{ horas: number; valor_hora: number }>;
+  const itensMateriais = (data.itens_materiais ?? []) as Array<{ quantidade: number; valor_unitario: number }>;
 
-  return (
-    servicos.reduce((t, i) => t + i.quantidade * i.valor_unitario, 0) +
-    maoDeObra.reduce((t, i) => t + i.horas * i.valor_hora, 0) +
-    materiais.reduce((t, i) => t + i.quantidade * i.valor_unitario, 0)
-  );
+  const servicos = itensServico.reduce((t, i) => t + i.quantidade * i.valor_unitario, 0);
+  const maoDeObra = itensMaoDeObra.reduce((t, i) => t + i.horas * i.valor_hora, 0);
+  const materiais = itensMateriais.reduce((t, i) => t + i.quantidade * i.valor_unitario, 0);
+
+  return { servicos, maoDeObra, materiais, total: servicos + maoDeObra + materiais };
+}
+
+export async function calcularTotalOrdemServico(
+  supabase: SupabaseClient,
+  ordemServicoId: string,
+): Promise<number> {
+  const { total } = await calcularValoresOrdemServico(supabase, ordemServicoId);
+  return total;
 }
 
 export async function getOrdemServico(id: string): Promise<OrdemServico | null> {

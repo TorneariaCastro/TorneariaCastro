@@ -93,7 +93,18 @@ Hoje a página pública do orçamento (`/orcamento/[token]`) exibe **cada linha 
 - **Valor total**
 - Os botões Aprovar / Recusar (inalterados)
 
-**Mão de obra e materiais somem por completo da visão do cliente** (confirmado por Kleber em 2026-09-10). A distinção que sustenta a decisão: o bloco **Serviço** descreve *o que o cliente está comprando* — mostrar isso dá confiança, principalmente em lote. Mão de obra e materiais descrevem *como o preço foi formado* — e isso é margem: cliente que sabe a hora discute a hora, e um print encaminhado entrega a formação de preço ao concorrente.
+**Correção aplicada em 2026-09-10 após QA da Ravena:** mostrar as linhas de Serviço e esconder mão de obra/materiais produzia, no uso misto, um **total maior que a soma das linhas visíveis** — o cliente via `R$ 800,00` numa linha e `R$ 1.020,00` no total, sem explicação para os R$ 220. Não lia como discrição, lia como erro de conta. Passa a existir **uma linha agregada** fechando a diferença, com rótulo fiel ao que foi lançado:
+
+| O que foi lançado | Linha extra mostrada ao cliente |
+|---|---|
+| Só Serviço | nenhuma |
+| Mão de obra + materiais | `Materiais e execução` |
+| Só materiais | `Materiais` |
+| Só mão de obra | `Execução do serviço` |
+
+Garantia: **o total sempre bate com a soma do que está na tela**, em qualquer combinação. Efeito colateral positivo: o orçamento aberto (sem bloco Serviço), que antes mostrava um total solto sem linha nenhuma, passa a exibir uma linha agregada.
+
+**Mão de obra e materiais continuam sem sair do servidor como itens** (confirmado por Kleber em 2026-09-10) — só o valor somado trafega. A distinção que sustenta a decisão: o bloco **Serviço** descreve *o que o cliente está comprando* — mostrar isso dá confiança, principalmente em lote. Mão de obra e materiais descrevem *como o preço foi formado* — e isso é margem: cliente que sabe a hora discute a hora, e um print encaminhado entrega a formação de preço ao concorrente.
 
 Consequência prática a comunicar no manual: **num orçamento aberto (só mão de obra + materiais), o cliente verá a descrição do serviço e o valor total, sem nenhuma linha.** Se Kleber quiser que o cliente enxergue o que está comprando, o caminho é lançar no bloco Serviço.
 
