@@ -4,17 +4,18 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { getOrdemServico } from "@/lib/data/ordens-servico";
-import { getCliente } from "@/lib/data/clientes";
+import { getCliente, listClientes } from "@/lib/data/clientes";
 import { calcularValorTotal } from "@/lib/types";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { getSessao } from "@/lib/auth/session";
 import { OrdemServicoAcoes } from "./ordem-servico-acoes";
 import { ItensLancamentos } from "./itens-lancamentos";
 import { StatusAcoes } from "./status-acoes";
+import { EditarOsDialog } from "./editar-os-dialog";
 
 export default async function OrdemServicoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [os, { isAdmin }] = await Promise.all([getOrdemServico(id), getSessao()]);
+  const [os, clientes, { isAdmin }] = await Promise.all([getOrdemServico(id), listClientes(), getSessao()]);
 
   if (!os) notFound();
 
@@ -38,6 +39,7 @@ export default async function OrdemServicoDetalhePage({ params }: { params: Prom
           </div>
           <p className="text-sm text-muted-foreground">{os.clienteNome}</p>
         </div>
+        {isAdmin && !os.aprovadoEm && <EditarOsDialog os={os} clientes={clientes} />}
       </div>
 
       {os.aprovadoEm && (

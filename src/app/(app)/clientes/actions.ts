@@ -40,3 +40,47 @@ export async function criarCliente(_prevState: CriarClienteState | undefined, fo
   revalidatePath("/clientes");
   return {};
 }
+
+export async function atualizarCliente(
+  clienteId: string,
+  formData: FormData,
+): Promise<CriarClienteState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) {
+    return { error: "Consultores não podem editar clientes." };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("clientes")
+    .update({
+      tipo_pessoa: formData.get("tipoPessoa") as TipoPessoa,
+      nome: String(formData.get("nome") ?? ""),
+      documento: String(formData.get("documento") ?? "").replace(/\D/g, ""),
+      email: String(formData.get("email") ?? ""),
+      telefone: String(formData.get("telefone") ?? ""),
+      endereco: {
+        logradouro: String(formData.get("logradouro") ?? ""),
+        numero: String(formData.get("numero") ?? ""),
+        bairro: String(formData.get("bairro") ?? ""),
+        cidade: String(formData.get("cidade") ?? ""),
+        uf: String(formData.get("uf") ?? ""),
+        cep: String(formData.get("cep") ?? ""),
+      },
+    })
+    .eq("id", clienteId);
+
+  if (error) {
+    return {
+      error: error.message.includes("duplicate")
+        ? "Já existe outro cliente com esse documento."
+        : "Não foi possível salvar as alterações.",
+    };
+  }
+
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${clienteId}`);
+  revalidatePath("/dashboard");
+  return {};
+}

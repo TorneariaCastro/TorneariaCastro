@@ -332,3 +332,45 @@ async function gerarContaAReceber(
     status: "pendente",
   });
 }
+
+export interface EditarOrdemServicoState {
+  error?: string;
+}
+
+export async function editarOrdemServico(
+  ordemServicoId: string,
+  formData: FormData,
+): Promise<EditarOrdemServicoState> {
+  const { isAdmin } = await getSessao();
+  if (!isAdmin) return { error: "Consultores não podem editar ordens de serviço." };
+
+  const clienteId = String(formData.get("clienteId") ?? "");
+  const descricao = String(formData.get("descricao") ?? "").trim();
+  const previsaoEntrega = String(formData.get("previsaoEntrega") ?? "");
+  const observacoes = String(formData.get("observacoes") ?? "").trim();
+
+  if (!clienteId) return { error: "Selecione um cliente." };
+  if (!descricao) return { error: "Descreva o serviço." };
+
+  const supabase = await createClient();
+
+  // Depois que o cliente aprovou o orçamento, a descrição do serviço faz parte
+  // do que ele aprovou — mudar isso por trás seria alterar o combinado.
+  const bloqueio = await garantirEdicaoPermitida(supabase, ordemServicoId);
+  if (bloqueio) return { error: bloqueio };
+
+  const { error } = await supabase
+    .from("ordens_servico")
+    .update({
+      cliente_id: clienteId,
+      descricao_servico: descricao,
+      previsao_entrega: previsaoEntrega || null,
+      observacoes: observacoes || null,
+    })
+    .eq("id", ordemServicoId);
+
+  if (error) return { error: "Não foi possível salvar as alterações." };
+
+  revalidarOrdem(ordemServicoId);
+  return {};
+}

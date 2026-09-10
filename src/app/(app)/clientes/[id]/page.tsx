@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Building2, Mail, MapPin, Phone, User } from "lucide-react";
+import { ArrowLeft, Building2, Mail, MapPin, Pencil, Phone, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { ClienteFormDialog } from "@/components/clientes/cliente-form-dialog";
+import { getSessao } from "@/lib/auth/session";
 import { getCliente } from "@/lib/data/clientes";
 import { listOrdensServicoPorCliente } from "@/lib/data/ordens-servico";
 import { listTransacoesPorCliente } from "@/lib/data/transacoes";
@@ -12,7 +14,7 @@ import { formatarDocumento, formatarMoeda } from "@/lib/format";
 
 export default async function ClienteDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const cliente = await getCliente(id);
+  const [cliente, { isAdmin }] = await Promise.all([getCliente(id), getSessao()]);
 
   if (!cliente) notFound();
 
@@ -46,6 +48,12 @@ export default async function ClienteDetalhePage({ params }: { params: Promise<{
             <p className="text-sm text-muted-foreground">{formatarDocumento(cliente.documento)}</p>
           </div>
         </div>
+        {isAdmin && (
+          <ClienteFormDialog cliente={cliente} variant="outline">
+            <Pencil className="size-4" />
+            Editar cliente
+          </ClienteFormDialog>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
