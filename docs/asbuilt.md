@@ -149,7 +149,7 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 #### Tarefas:
 - [ ] Ravena — QA completo de todas as telas e fluxos (incluindo responsividade)
 - [ ] Kerberos — auditoria de segurança (RLS, secrets, headers HTTP, CORS)
-- [ ] Configurar headers de segurança em `next.config.ts` (`X-Frame-Options`, `Content-Security-Policy`, `Strict-Transport-Security`) — hoje ausentes, achado do Kerberos em 2026-09-09 durante auditoria da Fase 02.5 (app inteiro, não específico daquela feature; mais relevante agora que existe rota pública sem login)
+- [x] Headers de segurança configurados em `next.config.ts` (2026-09-09): `X-Frame-Options: DENY` + `frame-ancestors none`, CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, e `poweredByHeader: false` (o site anunciava "X-Powered-By: Next.js"). HSTS já vinha da Vercel. Limitação registrada: `script-src` precisa de `unsafe-inline`/`unsafe-eval` por causa dos scripts inline do próprio Next.js — fechar isso exigiria nonce via proxy, com risco desproporcional dado que a aplicação não renderiza HTML de terceiros. Verificado em produção com browser real: zero violações de CSP, login e página pública de orçamento renderizando normalmente.
 - [ ] Merge `dev → hml` → aprovação de Kleber → merge `hml → main`
 - [ ] Confirmar deploy final em produção na Vercel (conta telascastroclaudia@gmail.com)
 
