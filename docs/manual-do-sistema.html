@@ -1,0 +1,1406 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html { color-scheme: light dark; }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style><title>Manual da Tornearia Castro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
+
+<style>
+  :root {
+    /* aço e papel */
+    --sheet: #e7eaec;
+    --paper: #f7f8f9;
+    --panel: #ffffff;
+    --ink: #14181d;
+    --ink-2: #414a54;
+    --ink-3: #6d7883;
+    --rule: #ccd2d7;
+    --rule-2: #aeb7bf;
+
+    /* óxido: a cor do metal quente e da sinalização de oficina */
+    --oxido: #a83e17;
+    --oxido-wash: #f7e9e2;
+    /* azul de prancha */
+    --prancha: #2f5573;
+    --prancha-wash: #e6edf3;
+
+    --ok: #1c6b50;
+    --ok-wash: #e0f0e9;
+    --alerta: #8a5c0c;
+    --alerta-wash: #f8efdc;
+    --perigo: #9d2f26;
+    --perigo-wash: #f9e7e5;
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --corpo: "Newsreader", Georgia, "Times New Roman", serif;
+    --tec: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+    --grade: rgba(20, 24, 29, 0.045);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --sheet: #0d1114;
+      --paper: #14191e;
+      --panel: #1a2026;
+      --ink: #e8ecef;
+      --ink-2: #aab4bd;
+      --ink-3: #7e8a95;
+      --rule: #2a333b;
+      --rule-2: #3d4954;
+
+      --oxido: #e0794f;
+      --oxido-wash: #2a1a12;
+      --prancha: #7aa8cc;
+      --prancha-wash: #14212b;
+
+      --ok: #55cfa0;
+      --ok-wash: #0f251e;
+      --alerta: #dfa94a;
+      --alerta-wash: #271f11;
+      --perigo: #ef8b82;
+      --perigo-wash: #2a1614;
+
+      --grade: rgba(232, 236, 239, 0.05);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --sheet: #0d1114;
+    --paper: #14191e;
+    --panel: #1a2026;
+    --ink: #e8ecef;
+    --ink-2: #aab4bd;
+    --ink-3: #7e8a95;
+    --rule: #2a333b;
+    --rule-2: #3d4954;
+
+    --oxido: #e0794f;
+    --oxido-wash: #2a1a12;
+    --prancha: #7aa8cc;
+    --prancha-wash: #14212b;
+
+    --ok: #55cfa0;
+    --ok-wash: #0f251e;
+    --alerta: #dfa94a;
+    --alerta-wash: #271f11;
+    --perigo: #ef8b82;
+    --perigo-wash: #2a1614;
+
+    --grade: rgba(232, 236, 239, 0.05);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--sheet);
+    background-image:
+      linear-gradient(var(--grade) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grade) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: var(--corpo);
+    font-size: 17.5px;
+    line-height: 1.68;
+    font-optical-sizing: auto;
+  }
+
+  .prancha {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 28px 16px 72px;
+  }
+
+  @media (min-width: 900px) { .prancha { padding: 40px 32px 96px; } }
+
+  /* ============ BLOCO DE IDENTIFICAÇÃO ============ */
+
+  .bloco-titulo {
+    background: var(--panel);
+    border: 1.5px solid var(--ink);
+    position: relative;
+  }
+
+  .bloco-titulo::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border: 1px solid var(--rule);
+    pointer-events: none;
+  }
+
+  .bt-topo {
+    padding: 30px 28px 24px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  @media (min-width: 760px) { .bt-topo { padding: 46px 44px 34px; } }
+
+  .oficina {
+    font-family: var(--tec);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--oxido);
+    margin: 0 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .oficina::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(36px, 7.2vw, 68px);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--oxido);
+  }
+
+  .resumo {
+    font-size: 19px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    max-width: 58ch;
+    margin: 0;
+  }
+
+  /* campos do bloco, como numa prancha real */
+  .bt-campos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 760px) { .bt-campos { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+  .campo {
+    padding: 14px 20px 16px;
+    border-right: 1px solid var(--rule);
+    border-top: 1px solid var(--rule);
+  }
+
+  @media (min-width: 760px) { .campo { padding: 16px 24px 18px; border-top: none; } }
+  .campo:last-child { border-right: none; }
+
+  .campo dt {
+    font-family: var(--tec);
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 5px;
+  }
+
+  .campo dd {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 14.5px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  /* ============ CORPO ============ */
+
+  .corpo {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: 40px;
+  }
+
+  @media (min-width: 1040px) {
+    .corpo { grid-template-columns: 218px minmax(0, 1fr); gap: 64px; }
+  }
+
+  /* --- lista de conteúdo, no formato de lista de peças --- */
+
+  .conteudo-lista { font-family: var(--display); }
+
+  @media (min-width: 1040px) {
+    .conteudo-lista {
+      position: sticky;
+      top: 28px;
+      align-self: start;
+      max-height: calc(100vh - 56px);
+      overflow-y: auto;
+    }
+  }
+
+  .conteudo-lista h2 {
+    font-family: var(--tec);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 12px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .conteudo-lista ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: item;
+  }
+
+  .conteudo-lista a {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--rule);
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: 14px;
+    line-height: 1.3;
+    transition: color .12s, padding-left .12s;
+  }
+
+  .conteudo-lista a::before {
+    counter-increment: item;
+    content: counter(item, decimal-leading-zero);
+    font-family: var(--tec);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    padding-top: 3px;
+  }
+
+  .conteudo-lista a:hover { color: var(--oxido); padding-left: 4px; }
+  .conteudo-lista a:hover::before { color: var(--oxido); }
+  .conteudo-lista a:focus-visible { outline: 2px solid var(--oxido); outline-offset: 2px; }
+
+  @media (max-width: 1039px) {
+    .conteudo-lista { margin-bottom: 44px; }
+    .conteudo-lista ol { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 8px; }
+    .conteudo-lista a {
+      white-space: nowrap;
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      padding: 8px 14px;
+      grid-template-columns: auto auto;
+    }
+  }
+
+  main { min-width: 0; }
+
+  /* --- seção --- */
+
+  section {
+    margin-bottom: 76px;
+    scroll-margin-top: 24px;
+  }
+
+  .cabeca {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .chamada {
+    width: 46px;
+    height: 46px;
+    border: 1.5px solid var(--oxido);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--tec);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--oxido);
+    background: var(--panel);
+  }
+
+  h2.tit {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(24px, 3.4vw, 33px);
+    line-height: 1.1;
+    letter-spacing: -0.024em;
+    margin: 6px 0 0;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 17.5px;
+    letter-spacing: -0.006em;
+    margin: 38px 0 12px;
+    color: var(--ink);
+  }
+
+  h3::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 2px;
+    background: var(--oxido);
+    vertical-align: middle;
+    margin-right: 10px;
+    margin-bottom: 3px;
+  }
+
+  p { max-width: 64ch; margin: 0 0 16px; }
+  .abertura { font-size: 19px; color: var(--ink-2); max-width: 60ch; }
+
+  strong { font-weight: 600; }
+
+  /* rótulo que aparece literalmente na tela do sistema */
+  b.ui {
+    font-family: var(--tec);
+    font-size: 0.79em;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    background: var(--prancha-wash);
+    color: var(--prancha);
+    border-radius: 3px;
+    padding: 2px 6px;
+    white-space: nowrap;
+  }
+
+  /* --- roteiro de passos, como uma folha de processo --- */
+
+  ol.roteiro {
+    list-style: none;
+    counter-reset: p;
+    margin: 22px 0;
+    padding: 0 0 0 4px;
+    max-width: 66ch;
+    border-left: 1px solid var(--rule-2);
+  }
+
+  ol.roteiro > li {
+    counter-increment: p;
+    position: relative;
+    padding: 0 0 20px 34px;
+  }
+
+  ol.roteiro > li:last-child { padding-bottom: 0; }
+
+  ol.roteiro > li::before {
+    content: counter(p);
+    position: absolute;
+    left: -11px;
+    top: 1px;
+    width: 22px;
+    height: 22px;
+    background: var(--sheet);
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    font-family: var(--tec);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+  }
+
+  ol.roteiro ul {
+    margin: 10px 0 0;
+    padding-left: 0;
+    list-style: none;
+    font-size: 16px;
+    color: var(--ink-2);
+  }
+
+  ol.roteiro ul li {
+    padding-left: 16px;
+    position: relative;
+    margin-bottom: 6px;
+  }
+
+  ol.roteiro ul li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 7px;
+    height: 1.5px;
+    background: var(--rule-2);
+  }
+
+  /* --- rota de produção --- */
+
+  .rota {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 24px;
+    margin: 26px 0 14px;
+    overflow-x: auto;
+  }
+
+  .rota-trilha {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: min-content;
+  }
+
+  .fase {
+    font-family: var(--tec);
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 7px 13px;
+    white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+
+  .fase.f-rascunho { color: var(--ink-3); }
+  .fase.f-orcado   { color: var(--prancha); background: var(--prancha-wash); }
+  .fase.f-exec     { color: var(--prancha); background: var(--prancha-wash); }
+  .fase.f-pronto   { color: var(--ok); background: var(--ok-wash); }
+  .fase.f-faturado { color: var(--oxido); background: var(--oxido-wash); }
+
+  .liga {
+    width: 26px;
+    height: 1px;
+    background: var(--rule-2);
+    flex-shrink: 0;
+  }
+
+  /* --- avisos --- */
+
+  .nota {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--prancha);
+    padding: 18px 22px 20px;
+    margin: 26px 0;
+    max-width: 66ch;
+  }
+
+  .nota.cuidado { border-top-color: var(--alerta); }
+  .nota.critica { border-top-color: var(--perigo); }
+
+  .nota-tag {
+    font-family: var(--tec);
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--prancha);
+    margin: 0 0 8px;
+    font-weight: 500;
+  }
+
+  .nota.cuidado .nota-tag { color: var(--alerta); }
+  .nota.critica .nota-tag { color: var(--perigo); }
+
+  .nota p { font-size: 16.5px; color: var(--ink-2); margin: 0; max-width: none; }
+  .nota p + p { margin-top: 10px; }
+
+  /* --- tabela --- */
+
+  .quadro {
+    overflow-x: auto;
+    margin: 26px 0;
+    border: 1px solid var(--rule);
+    background: var(--panel);
+  }
+
+  table { border-collapse: collapse; width: 100%; font-family: var(--display); font-size: 15px; }
+
+  th {
+    text-align: left;
+    font-family: var(--tec);
+    font-weight: 500;
+    font-size: 9.5px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 12px 18px;
+    border-bottom: 1.5px solid var(--ink);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  td.n { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+  /* --- memória de cálculo, no formato de lista de materiais --- */
+
+  .memoria {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    margin: 28px 0;
+    max-width: 66ch;
+  }
+
+  .memoria-topo {
+    font-family: var(--tec);
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 12px 20px;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .memoria table { font-size: 14.5px; }
+  .memoria td { padding: 12px 20px; }
+  .memoria .rodape td {
+    border-bottom: none;
+    border-top: 1.5px solid var(--ink);
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--ink);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .memoria .rodape td.n { color: var(--oxido); font-size: 19px; }
+
+  ul.simples {
+    max-width: 64ch;
+    color: var(--ink-2);
+    padding-left: 0;
+    list-style: none;
+  }
+
+  ul.simples li { padding-left: 18px; position: relative; margin-bottom: 8px; }
+  ul.simples li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 13px;
+    width: 8px;
+    height: 1.5px;
+    background: var(--oxido);
+  }
+
+  /* --- rodapé --- */
+
+  .rodape-prancha {
+    margin-top: 20px;
+    border-top: 1.5px solid var(--ink);
+    padding-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    font-family: var(--tec);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  a { color: var(--oxido); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  /* ============ IMPRESSÃO / PDF ============ */
+
+  @page { size: A4; margin: 12mm 12mm 11mm; }
+
+  @media print {
+    /* força a paleta clara no papel, vença o tema da tela */
+    :root,
+    :root:not([data-theme="light"]),
+    :root[data-theme="dark"] {
+      --sheet: #ffffff;
+      --paper: #ffffff;
+      --panel: #ffffff;
+      --ink: #14181d;
+      --ink-2: #3b444e;
+      --ink-3: #6d7883;
+      --rule: #ccd2d7;
+      --rule-2: #aeb7bf;
+      --oxido: #a83e17;
+      --oxido-wash: #f7e9e2;
+      --prancha: #2f5573;
+      --prancha-wash: #e9eff4;
+      --ok: #1c6b50;
+      --ok-wash: #e0f0e9;
+      --alerta: #8a5c0c;
+      --alerta-wash: #f8efdc;
+      --perigo: #9d2f26;
+      --perigo-wash: #f9e7e5;
+      --grade: transparent;
+      color-scheme: light;
+    }
+
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body {
+      background: #fff;
+      background-image: none;
+      font-size: 8.9pt;
+      line-height: 1.4;
+    }
+
+    .prancha { max-width: none; padding: 0; }
+
+    /* cabeçalho vira faixa de topo, não folha de rosto */
+    .bloco-titulo { break-after: auto; border-width: 1pt; }
+    .bloco-titulo::after { display: none; }
+    .bt-topo { padding: 6mm 7mm 5mm; }
+    .oficina { font-size: 6.5pt; margin-bottom: 3mm; }
+    h1 { font-size: 21pt; margin-bottom: 2.5mm; }
+    h1 br { display: none; }
+    h1 em::before { content: " "; }
+    .resumo { font-size: 9.5pt; max-width: 100%; }
+    .bt-campos { grid-template-columns: repeat(4, 1fr); }
+    .campo { border-top: none; padding: 3mm 7mm 3.5mm; }
+    .campo dt { font-size: 6pt; margin-bottom: 1mm; }
+    .campo dd { font-size: 8.5pt; }
+
+    /* índice: faixa horizontal compacta logo abaixo do cabeçalho */
+    .corpo { display: block; margin-top: 6mm; }
+    .conteudo-lista {
+      position: static;
+      max-height: none;
+      overflow: visible;
+      break-after: auto;
+      break-inside: avoid;
+      margin-bottom: 7mm;
+    }
+    .conteudo-lista h2 { font-size: 6.5pt; margin-bottom: 2mm; padding-bottom: 1.5mm; }
+    .conteudo-lista ol { display: block; columns: 3; column-gap: 8mm; }
+    .conteudo-lista a {
+      break-inside: avoid;
+      padding: 1.4mm 0;
+      font-size: 8pt;
+      grid-template-columns: 16px minmax(0, 1fr);
+      gap: 5px;
+    }
+    .conteudo-lista a::before { font-size: 6.5pt; padding-top: 2px; }
+
+    /* corpo compacto — nenhum bloco cortado entre folhas */
+    section { break-inside: auto; margin-bottom: 7mm; scroll-margin-top: 0; }
+    .cabeca {
+      break-after: avoid;
+      break-inside: avoid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 10px;
+      margin-bottom: 3mm;
+      padding-bottom: 2mm;
+    }
+    .chamada { width: 30px; height: 30px; font-size: 10pt; }
+    h2.tit { font-size: 14pt; margin-top: 2px; }
+    h3 { break-after: avoid; font-size: 9.8pt; margin: 4.5mm 0 1.8mm; }
+    p { margin-bottom: 2.2mm; max-width: 100%; }
+    .abertura { font-size: 9.6pt; max-width: 100%; }
+    p, li { orphans: 3; widows: 3; }
+
+    ol.roteiro { margin: 3mm 0; max-width: 100%; }
+    ol.roteiro > li { break-inside: avoid; padding: 0 0 2.6mm 26px; }
+    ol.roteiro > li::before { width: 17px; height: 17px; left: -9px; font-size: 7pt; }
+    ol.roteiro ul { font-size: 8.6pt; margin-top: 1.4mm; }
+    ol.roteiro ul li { margin-bottom: 0.8mm; }
+
+    .nota, .quadro, .memoria, .rota, table, tr, .rodape-prancha { break-inside: avoid; }
+    .nota { padding: 3mm 4mm 3.2mm; margin: 3.5mm 0; max-width: 100%; border-top-width: 2pt; }
+    .nota-tag { font-size: 6.2pt; margin-bottom: 1.4mm; }
+    .nota p { font-size: 8.6pt; }
+    .quadro, .memoria, .rota { margin: 3.5mm 0; max-width: 100%; }
+    .rota { padding: 4mm; }
+    table { font-size: 8.4pt; }
+    th { font-size: 6.2pt; padding: 2.2mm 3.5mm; }
+    td { padding: 2.4mm 3.5mm; }
+    .memoria-topo { font-size: 6.2pt; padding: 2.2mm 3.5mm; }
+    .memoria td { padding: 2.2mm 3.5mm; }
+    .memoria .rodape td { font-size: 9pt; }
+    .memoria .rodape td.n { font-size: 11pt; }
+    ul.simples { max-width: 100%; }
+    ul.simples li { margin-bottom: 1.2mm; }
+
+    /* no papel o link não é clicável — vira só texto */
+    a { color: var(--ink); text-decoration: none; }
+    .conteudo-lista a { color: var(--ink-2); }
+
+    .rodape-prancha { margin-top: 5mm; padding-top: 3mm; font-size: 6.5pt; }
+  }
+</style>
+
+</head>
+<body>
+<div class="prancha">
+
+  <header class="bloco-titulo">
+    <div class="bt-topo">
+      <p class="oficina">Tornearia Castro · Usinagem e Torno CNC</p>
+      <h1>Manual de operação<br><em>do sistema</em></h1>
+      <p class="resumo">
+        Do primeiro contato do cliente até a nota fiscal emitida — cada tela, cada
+        botão e cada decisão, na ordem em que as coisas acontecem na oficina.
+      </p>
+    </div>
+    <dl class="bt-campos">
+      <div class="campo"><dt>Documento</dt><dd>Manual de operação</dd></div>
+      <div class="campo"><dt>Sistema</dt><dd>CRM Tornearia Castro</dd></div>
+      <div class="campo"><dt>Escopo</dt><dd>12 rotinas</dd></div>
+      <div class="campo"><dt>Praça</dt><dd>Belo Horizonte — MG</dd></div>
+    </dl>
+  </header>
+
+  <div class="corpo">
+
+    <nav class="conteudo-lista">
+      <h2>Conteúdo</h2>
+      <ol>
+        <li><a href="#ciclo">Como o sistema pensa</a></li>
+        <li><a href="#entrar">Entrar no sistema</a></li>
+        <li><a href="#cliente">Cadastrar cliente</a></li>
+        <li><a href="#orcamento">Criar orçamento</a></li>
+        <li><a href="#valores">Lançar os valores</a></li>
+        <li><a href="#enviar">Enviar ao cliente</a></li>
+        <li><a href="#resposta">Quando o cliente responde</a></li>
+        <li><a href="#executar">Executar e concluir</a></li>
+        <li><a href="#financeiro">Financeiro</a></li>
+        <li><a href="#nota">Emitir nota fiscal</a></li>
+        <li><a href="#usuarios">Usuários e acessos</a></li>
+        <li><a href="#duvidas">Dúvidas comuns</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <section id="ciclo">
+        <div class="cabeca">
+          <span class="chamada">01</span>
+          <h2 class="tit">Como o sistema pensa</h2>
+        </div>
+
+        <p class="abertura">
+          Uma ideia explica quase tudo: <strong>orçamento e ordem de serviço são a mesma
+          coisa</strong>, em momentos diferentes da vida.
+        </p>
+        <p>
+          Quando um cliente pede um preço, você cria uma ordem na situação
+          <b class="ui">Orçado</b>. Se ele aprovar, a mesma ordem avança para
+          <b class="ui">Em Execução</b> — sem redigitar nada. É por isso que a conversão
+          é instantânea, e por isso tudo mora em <b class="ui">Ordens de Serviço</b>.
+        </p>
+
+        <div class="rota">
+          <div class="rota-trilha">
+            <span class="fase f-rascunho">Rascunho</span>
+            <span class="liga"></span>
+            <span class="fase f-orcado">Orçado</span>
+            <span class="liga"></span>
+            <span class="fase f-exec">Em Execução</span>
+            <span class="liga"></span>
+            <span class="fase f-pronto">Pronto</span>
+            <span class="liga"></span>
+            <span class="fase f-faturado">Faturado</span>
+          </div>
+        </div>
+        <p style="color:var(--ink-3);font-size:16px">
+          A ordem caminha sempre para frente, uma etapa por vez. Não dá para pular
+          etapas nem reabrir uma ordem faturada — é proposital, para o histórico
+          não virar bagunça.
+        </p>
+
+        <h3>O caminho completo de um serviço</h3>
+        <ol class="roteiro">
+          <li>Cliente liga pedindo preço para tornear um eixo.</li>
+          <li>Você cadastra o cliente, se for novo, e cria o orçamento.</li>
+          <li>Lança as horas de mão de obra e os materiais. O sistema soma.</li>
+          <li>Manda o link do orçamento pelo WhatsApp.</li>
+          <li>O cliente aprova pelo próprio link — ou avisa por telefone.</li>
+          <li>Você inicia o serviço, executa e marca como pronto.</li>
+          <li>Marca como faturado. A conta a receber aparece sozinha.</li>
+          <li>Cliente paga, você dá baixa e emite a nota fiscal.</li>
+        </ol>
+      </section>
+
+      <section id="entrar">
+        <div class="cabeca">
+          <span class="chamada">02</span>
+          <h2 class="tit">Entrar no sistema</h2>
+        </div>
+
+        <ol class="roteiro">
+          <li>Abra <b class="ui">tornearia-castro.vercel.app</b> no navegador.</li>
+          <li>Informe e-mail e senha e clique em <b class="ui">Entrar</b>.</li>
+        </ol>
+
+        <p style="margin-top:22px">
+          O menu da esquerda dá acesso a todas as áreas: Dashboard, Clientes, Ordens de
+          Serviço, Notas Fiscais, Financeiro e Usuários. No topo da tela inicial ficam
+          os três atalhos do dia a dia: <b class="ui">Nova Ordem de Serviço</b>,
+          <b class="ui">Criar Orçamento</b> e <b class="ui">Cadastrar Cliente</b>.
+        </p>
+
+        <div class="nota">
+          <p class="nota-tag">No celular</p>
+          <p>
+            O sistema funciona no navegador do telefone. O menu vira um botão de três
+            traços no canto superior esquerdo. Dá para tocar a oficina inteira pelo
+            celular, no meio do galpão.
+          </p>
+        </div>
+      </section>
+
+      <section id="cliente">
+        <div class="cabeca">
+          <span class="chamada">03</span>
+          <h2 class="tit">Cadastrar cliente</h2>
+        </div>
+
+        <p class="abertura">
+          Todo orçamento nasce ligado a um cliente. E para emitir nota fiscal, o CPF ou
+          CNPJ dele precisa estar preenchido.
+        </p>
+
+        <ol class="roteiro">
+          <li>No menu, clique em <b class="ui">Clientes</b> — ou use o atalho <b class="ui">Cadastrar Cliente</b>.</li>
+          <li>
+            Escolha o tipo:
+            <ul>
+              <li><strong>Pessoa Jurídica</strong> — empresa, com CNPJ e Razão Social</li>
+              <li><strong>Pessoa Física</strong> — pessoa, com CPF e nome completo</li>
+            </ul>
+          </li>
+          <li>Preencha os dados. <strong>Todos os campos são obrigatórios</strong>: nome, documento, e-mail, telefone e endereço completo.</li>
+          <li>Clique em <b class="ui">Salvar cliente</b>.</li>
+        </ol>
+
+        <div class="nota cuidado">
+          <p class="nota-tag">Capriche no telefone</p>
+          <p>
+            É desse número que sai o botão de WhatsApp na hora de mandar o orçamento.
+            Digite com DDD, só números — por exemplo <b class="ui">31988887777</b>.
+          </p>
+        </div>
+
+        <h3>Corrigir dados depois</h3>
+        <ol class="roteiro">
+          <li>Em <b class="ui">Clientes</b>, clique no nome dele na lista.</li>
+          <li>No canto superior direito, clique em <b class="ui">Editar cliente</b>.</li>
+          <li>O formulário abre preenchido. Corrija e clique em <b class="ui">Salvar alterações</b>.</li>
+        </ol>
+      </section>
+
+      <section id="orcamento">
+        <div class="cabeca">
+          <span class="chamada">04</span>
+          <h2 class="tit">Criar orçamento</h2>
+        </div>
+
+        <p class="abertura">
+          Atenção a este detalhe — é onde a maioria dos enganos acontece. Existem dois
+          botões parecidos, e eles criam ordens em situações diferentes.
+        </p>
+
+        <div class="quadro">
+          <table>
+            <thead>
+              <tr><th>Botão</th><th>Cria como</th><th>Quando usar</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Criar Orçamento</td>
+                <td>Orçado</td>
+                <td>Cliente pediu preço e você vai mandar para ele aprovar</td>
+              </tr>
+              <tr>
+                <td>Nova Ordem de Serviço</td>
+                <td>Rascunho</td>
+                <td>Anotação interna, serviço que ainda não virou proposta</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ol class="roteiro">
+          <li>Na tela inicial, clique em <b class="ui">Criar Orçamento</b>.</li>
+          <li>Escolha o cliente na lista. Se o seu não estiver lá, cadastre primeiro.</li>
+          <li>
+            Escreva a <b class="ui">Descrição do serviço</b>. Vale caprichar — é o texto
+            que o cliente vai ler. Exemplo: <em>“Torneamento de eixo em aço 1045, com
+            acabamento retificado”</em>.
+          </li>
+          <li>Clique em <b class="ui">Criar (Orçado)</b>.</li>
+        </ol>
+
+        <div class="nota">
+          <p class="nota-tag">Se o botão estiver apagado</p>
+          <p>
+            Ele só libera depois que um cliente é escolhido. Se estiver apagado, é
+            porque o campo ainda mostra “Selecione um cliente”.
+          </p>
+        </div>
+
+        <h3>Corrigir uma ordem já criada</h3>
+        <p>
+          Abra a ordem e clique em <b class="ui">Editar</b>. Dá para trocar cliente,
+          descrição, previsão de entrega e observações — <strong>enquanto o cliente não
+          tiver aprovado</strong>. Depois da aprovação o botão some: mudar o combinado
+          pelas costas dele não seria correto.
+        </p>
+      </section>
+
+      <section id="valores">
+        <div class="cabeca">
+          <span class="chamada">05</span>
+          <h2 class="tit">Lançar os valores</h2>
+        </div>
+
+        <p class="abertura">
+          Uma ordem recém-criada vale R$ 0,00. O preço nasce dos lançamentos — o sistema
+          multiplica e soma sozinho. Não existe campo para digitar o valor total: ele é
+          uma conta, não um dado. E não adianta escrever o preço na descrição do serviço:
+          ali é texto, o sistema não lê valor de lá.
+        </p>
+
+        <p>
+          São <strong>três blocos</strong>, e você usa o que fizer sentido — nenhum é
+          obrigatório, nenhum exclui o outro:
+        </p>
+
+        <ul>
+          <li><strong>Serviço</strong> — preço fechado. “Essa peça sai por R$ 800.”</li>
+          <li><strong>Mão de obra</strong> — quando você abre as horas para justificar</li>
+          <li><strong>Materiais</strong> — o que você comprou para fazer a peça</li>
+        </ul>
+
+        <div class="nota cuidado">
+          <p class="nota-tag">Os números em cinza são exemplos, não valores preenchidos</p>
+          <p>
+            Os campos mostram algo como <b class="ui">2</b> ou <b class="ui">120,00</b> em
+            cinza claro. Isso é só um exemplo do que se espera ali — some assim que você
+            clica e digita. Enquanto você não lançar de verdade, o valor total continua
+            R$ 0,00. E pode digitar com <strong>vírgula</strong> (<b class="ui">120,50</b>):
+            o sistema entende.
+          </p>
+        </div>
+
+        <ol class="roteiro">
+          <li>Em <b class="ui">Ordens de Serviço</b>, clique no número da ordem — por exemplo <b class="ui">OS-2026-0004</b>.</li>
+          <li>Role até a seção <b class="ui">Valores do serviço</b>.</li>
+          <li>
+            Em <strong>Serviço</strong>, quando o preço for fechado:
+            <ul>
+              <li><b class="ui">Descrição</b> — o que o cliente está comprando. Ex: “Usinagem de bucha”</li>
+              <li><b class="ui">Qtd.</b> — quantas peças. Para peça única, deixe <b class="ui">1</b></li>
+              <li><b class="ui">Valor unitário</b> — o preço de cada uma</li>
+            </ul>
+            Exemplo: <b class="ui">Bucha de bronze · 5 · 160,00</b> → R$ 800,00.
+          </li>
+          <li>
+            Em <strong>Mão de obra</strong>, preencha e clique em <b class="ui">Lançar</b>:
+            <ul>
+              <li><b class="ui">Descrição</b> — o que foi feito. Ex: “Torneamento de eixo”</li>
+              <li><b class="ui">Horas</b> — quantas horas de trabalho</li>
+              <li><b class="ui">Valor por hora</b> — quanto você cobra a hora</li>
+            </ul>
+          </li>
+          <li>
+            Em <strong>Materiais</strong>, mesma lógica:
+            <ul>
+              <li><b class="ui">Descrição</b> — ex: “Aço 1045”</li>
+              <li><b class="ui">Qtd.</b> e <b class="ui">Unidade</b> — ex: 2 un, ou 1,5 kg</li>
+              <li><b class="ui">Valor unitário</b> — preço de cada um</li>
+            </ul>
+          </li>
+          <li>Repita quantas vezes precisar. Cada linha tem uma lixeira do lado para remover.</li>
+        </ol>
+
+        <div class="memoria">
+          <p class="memoria-topo">Memória de cálculo — exemplo</p>
+          <table>
+            <tbody>
+              <tr>
+                <td>Bucha de bronze</td>
+                <td style="color:var(--ink-3)">5 × R$ 160,00</td>
+                <td class="n">R$ 800,00</td>
+              </tr>
+              <tr>
+                <td>Torneamento de eixo</td>
+                <td style="color:var(--ink-3)">4 h × R$ 120,00</td>
+                <td class="n">R$ 480,00</td>
+              </tr>
+              <tr>
+                <td>Aço 1045</td>
+                <td style="color:var(--ink-3)">2 un × R$ 85,50</td>
+                <td class="n">R$ 171,00</td>
+              </tr>
+              <tr class="rodape">
+                <td colspan="2">Valor total do orçamento</td>
+                <td class="n">R$ 1.451,00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Esse total passa a aparecer em três lugares: no topo da ordem, na coluna
+          <b class="ui">Valor</b> da listagem, e no orçamento que o cliente recebe.
+        </p>
+
+        <div class="nota">
+          <p class="nota-tag">O cliente não vê sua formação de preço</p>
+          <p>
+            No link enviado ao cliente aparecem apenas a descrição do serviço, as linhas
+            do bloco <b class="ui">Serviço</b> e o valor total. <strong>Mão de obra e
+            materiais ficam só para você</strong> — o cliente não vê suas horas nem quanto
+            custou o aço. Se quiser que ele enxergue o que está comprando item a item,
+            lance no bloco <b class="ui">Serviço</b>.
+          </p>
+        </div>
+
+        <div class="nota cuidado">
+          <p class="nota-tag">Os valores travam após a aprovação</p>
+          <p>
+            Depois que o cliente aprova pelo link, os campos de lançamento desaparecem.
+            Ele aprovou um preço específico — mudar depois seria alterar o combinado.
+            Confira antes de enviar.
+          </p>
+        </div>
+      </section>
+
+      <section id="enviar">
+        <div class="cabeca">
+          <span class="chamada">06</span>
+          <h2 class="tit">Enviar ao cliente</h2>
+        </div>
+
+        <ol class="roteiro">
+          <li>Na tela da ordem, vá até <b class="ui">Compartilhamento e aprovação</b>.</li>
+          <li>Clique em <b class="ui">Compartilhar orçamento</b>.</li>
+          <li>
+            Aparecem duas opções:
+            <ul>
+              <li>Um ícone para <strong>copiar o link</strong>, se quiser colar em e-mail</li>
+              <li><b class="ui">Enviar no WhatsApp</b>, que abre a conversa do cliente com a mensagem e o link prontos — você só aperta enviar</li>
+            </ul>
+          </li>
+        </ol>
+
+        <p>
+          O cliente <strong>não precisa de login nem senha</strong>. Ele abre o link e vê
+          uma página limpa com o número da ordem, a descrição, as linhas do bloco
+          <b class="ui">Serviço</b>, o valor total e dois botões:
+          <b class="ui">Aprovar orçamento</b> e <b class="ui">Recusar</b>. Mão de obra e
+          materiais não aparecem para ele.
+        </p>
+
+        <div class="nota">
+          <p class="nota-tag">Validade de 30 dias</p>
+          <p>
+            Depois disso o link expira e mostra um aviso pedindo para o cliente
+            solicitar novo orçamento. Para reabrir, clique em
+            <b class="ui">Compartilhar orçamento</b> de novo — a contagem recomeça.
+          </p>
+        </div>
+      </section>
+
+      <section id="resposta">
+        <div class="cabeca">
+          <span class="chamada">07</span>
+          <h2 class="tit">Quando o cliente responde</h2>
+        </div>
+
+        <h3>Aprovou pelo link</h3>
+        <p>
+          A ordem passa a mostrar <strong>“Cliente aprovou o orçamento em [data]”</strong>,
+          e em <b class="ui">Andamento do serviço</b> aparece
+          <b class="ui">Converter em Serviço</b>. Clique: a ordem vai para
+          <b class="ui">Em Execução</b> e o trabalho começa.
+        </p>
+
+        <h3>Aprovou por telefone ou pessoalmente</h3>
+        <p>
+          Acontece o tempo todo, e o sistema prevê. Na mesma seção aparece
+          <b class="ui">Iniciar serviço</b> — use quando a aprovação veio por fora do
+          link. Faz exatamente a mesma coisa.
+        </p>
+
+        <h3>Recusou</h3>
+        <p>
+          A ordem registra a recusa com a data. Para encerrar, use
+          <b class="ui">Cancelar OS</b>, que pede confirmação em dois cliques para você
+          não cancelar sem querer.
+        </p>
+      </section>
+
+      <section id="executar">
+        <div class="cabeca">
+          <span class="chamada">08</span>
+          <h2 class="tit">Executar e concluir</h2>
+        </div>
+
+        <p class="abertura">
+          Cada etapa tem um botão só, e ele muda conforme a situação. Você nunca precisa
+          decidir qual usar — o sistema mostra o próximo passo possível.
+        </p>
+
+        <div class="quadro">
+          <table>
+            <thead>
+              <tr><th>Situação atual</th><th>Botão que aparece</th><th>O que acontece</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Rascunho</td><td>Marcar como Orçado</td><td>Vira proposta e pode ser enviada</td></tr>
+              <tr><td>Orçado</td><td>Converter em Serviço <em>ou</em> Iniciar serviço</td><td>Vai para Em Execução</td></tr>
+              <tr><td>Em Execução</td><td>Marcar como Pronto</td><td>Registra a data de conclusão</td></tr>
+              <tr><td>Pronto</td><td>Marcar como Faturado</td><td>Gera a conta a receber</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="nota">
+          <p class="nota-tag">Faturar gera dinheiro a receber</p>
+          <p>
+            Ao marcar <b class="ui">Faturado</b>, o sistema cria automaticamente a conta
+            a receber no Financeiro, com o valor total da ordem, vencimento em 30 dias e
+            o cliente vinculado. Você não lança nada à mão.
+          </p>
+        </div>
+
+        <h3>Achar uma ordem rápido</h3>
+        <p>
+          Na tela <b class="ui">Ordens de Serviço</b>, os cartões do topo são clicáveis.
+          Clique em <b class="ui">Em Execução</b> para ver só o que está na bancada
+          agora, ou em <b class="ui">Orçado</b> para ver os orçamentos aguardando
+          resposta. Clicar de novo mostra tudo.
+        </p>
+      </section>
+
+      <section id="financeiro">
+        <div class="cabeca">
+          <span class="chamada">09</span>
+          <h2 class="tit">Financeiro</h2>
+        </div>
+
+        <p class="abertura">
+          Duas abas — <b class="ui">Contas a Receber</b> e <b class="ui">Contas a Pagar</b> —
+          e três números no topo: total a receber, total a pagar e saldo projetado.
+        </p>
+
+        <h3>Lançar entrada ou saída</h3>
+        <ol class="roteiro">
+          <li>Clique em <b class="ui">Nova movimentação</b>.</li>
+          <li>
+            Escolha o tipo:
+            <ul>
+              <li><strong>Entrada</strong> — dinheiro a receber, com cliente vinculado se quiser</li>
+              <li><strong>Saída</strong> — dinheiro a pagar, com categoria: matéria-prima, ferramentas de corte, energia, manutenção, salários, impostos ou outros</li>
+            </ul>
+          </li>
+          <li>Preencha descrição, valor e vencimento.</li>
+          <li>Clique em <b class="ui">Lançar</b>.</li>
+        </ol>
+
+        <p>
+          Contas vindas de ordens faturadas aparecem sozinhas. À mão você lança só o que
+          não passou por uma ordem — conta de luz, compra de ferramenta, salários.
+        </p>
+
+        <h3>Dar baixa quando o dinheiro entra ou sai</h3>
+        <ol class="roteiro">
+          <li>Na linha da conta, clique em <b class="ui">Dar baixa</b>.</li>
+          <li>Escolha a forma: <b class="ui">PIX</b>, <b class="ui">Dinheiro</b>, <b class="ui">Transferência</b>, <b class="ui">Boleto</b>, <b class="ui">Cartão de crédito</b> ou <b class="ui">Cartão de débito</b>.</li>
+        </ol>
+
+        <p>
+          A conta passa para <b class="ui">Pago</b> e sai do total em aberto. Lançou algo
+          errado? O botão ⊘ ao lado cancela a movimentação, pedindo confirmação antes.
+        </p>
+
+        <div class="nota cuidado">
+          <p class="nota-tag">A baixa libera a nota fiscal</p>
+          <p>
+            O botão de emitir nota só aparece em contas a receber com situação
+            <b class="ui">Pago</b>. É a ordem natural: o cliente pagou, você dá baixa,
+            depois emite.
+          </p>
+        </div>
+      </section>
+
+      <section id="nota">
+        <div class="cabeca">
+          <span class="chamada">10</span>
+          <h2 class="tit">Emitir nota fiscal</h2>
+        </div>
+
+        <p class="abertura">
+          A nota sai pelo Emissor Nacional da Receita Federal, que substituiu o BHISS
+          Digital da Prefeitura em janeiro de 2026. O certificado digital da Tornearia
+          já está configurado.
+        </p>
+
+        <ol class="roteiro">
+          <li>Vá em <b class="ui">Financeiro</b>, aba <b class="ui">Contas a Receber</b>.</li>
+          <li>Ache a conta com situação <b class="ui">Pago</b> referente ao serviço.</li>
+          <li>Clique em <b class="ui">Emitir NFSe</b>.</li>
+          <li>Aguarde alguns segundos. O sistema monta a nota, assina com o certificado digital e envia à Receita.</li>
+        </ol>
+
+        <div class="nota critica">
+          <p class="nota-tag">Isto emite nota fiscal de verdade</p>
+          <p>
+            O sistema está ligado no ambiente real da Receita. A nota tem valor legal, é
+            declarada com o CNPJ da Tornearia e não é teste. Confira valor e cliente
+            antes de clicar.
+          </p>
+          <p>
+            Se algo estiver errado, a Receita recusa e <strong>nada é emitido</strong> —
+            não existe risco de sair nota pela metade.
+          </p>
+        </div>
+
+        <div class="quadro">
+          <table>
+            <thead><tr><th>Parâmetro fiscal</th><th>Configuração</th></tr></thead>
+            <tbody>
+              <tr><td>Código do serviço</td><td>140501 — restauração, recondicionamento, corte, acabamento e congêneres</td></tr>
+              <tr><td>Regime tributário</td><td>Simples Nacional — ME/EPP</td></tr>
+              <tr><td>Total de tributos</td><td class="n">6%</td></tr>
+              <tr><td>Alíquota do ISS</td><td>Aplicada pela Receita, conforme registro da Prefeitura de BH</td></tr>
+              <tr><td>Certificado digital</td><td>e-CNPJ A1 — válido até 02/03/2027</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="nota cuidado">
+          <p class="nota-tag">Antes da primeira nota</p>
+          <p>
+            O cliente da ordem precisa ter CPF ou CNPJ preenchido. Sem isso o sistema
+            avisa e não envia nada.
+          </p>
+          <p>
+            O certificado vence em <strong>2 de março de 2027</strong>. Renove antes
+            disso, ou a emissão para de funcionar.
+          </p>
+        </div>
+
+        <h3>Precisa cancelar uma nota?</h3>
+        <p>
+          Pelo sistema ainda não há botão. Use o portal oficial em
+          <b class="ui">gov.br/nfse</b>, entrando com o certificado digital. O
+          cancelamento tem prazo — normalmente até o vencimento do ISS do período.
+        </p>
+      </section>
+
+      <section id="usuarios">
+        <div class="cabeca">
+          <span class="chamada">11</span>
+          <h2 class="tit">Usuários e acessos</h2>
+        </div>
+
+        <p class="abertura">
+          Dois níveis, e a diferença é simples: um mexe, o outro só olha.
+        </p>
+
+        <div class="quadro">
+          <table>
+            <thead><tr><th>Papel</th><th>Pode fazer</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Administrador</td>
+                <td>Tudo: cadastrar, editar, lançar valores, mudar situação, mexer no financeiro, emitir nota e criar outros usuários</td>
+              </tr>
+              <tr>
+                <td>Consultor</td>
+                <td>Somente consulta. Vê todas as telas, mas nenhum botão de alteração aparece</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ol class="roteiro">
+          <li>No menu, clique em <b class="ui">Usuários</b> — só administradores enxergam esta tela.</li>
+          <li>Clique em <b class="ui">Criar usuário</b>.</li>
+          <li>Informe e-mail, senha de no mínimo 8 caracteres, e escolha o papel.</li>
+          <li>Pronto. A pessoa já entra com esses dados — não há e-mail de convite.</li>
+        </ol>
+
+        <p>Para mudar o papel de alguém depois, use a lista na própria linha do usuário.</p>
+      </section>
+
+      <section id="duvidas">
+        <div class="cabeca">
+          <span class="chamada">12</span>
+          <h2 class="tit">Dúvidas comuns</h2>
+        </div>
+
+        <h3>Cliquei no botão e não aconteceu nada</h3>
+        <p>
+          Provavelmente falta preencher um campo obrigatório — o sistema mostra a
+          mensagem em vermelho dizendo qual. Se mesmo assim nada aparecer, atualize a
+          página com <b class="ui">Ctrl + Shift + R</b>.
+        </p>
+
+        <h3>O valor da ordem está R$ 0,00</h3>
+        <p>
+          Faltou lançar mão de obra ou materiais. Abra a ordem e use a seção
+          <b class="ui">Valores do serviço</b> — rotina 05.
+        </p>
+
+        <h3>O cliente disse que o link não abre</h3>
+        <p>
+          Links valem 30 dias. Clique em <b class="ui">Compartilhar orçamento</b> de novo
+          para gerar outro; a validade recomeça.
+        </p>
+
+        <h3>Preciso mudar o valor de um orçamento já aprovado</h3>
+        <p>
+          Não dá, e é de propósito. O caminho correto é cancelar aquela ordem e criar um
+          orçamento novo com os valores certos, enviando de novo para aprovação.
+        </p>
+
+        <h3>O que ainda não existe</h3>
+        <ul class="simples">
+          <li>Cancelar nota fiscal pela tela — use o portal gov.br/nfse</li>
+          <li>Boleto e PIX automáticos — a cobrança ainda é combinada por fora</li>
+          <li>Excluir clientes ou ordens de serviço — dá para cancelar a ordem</li>
+        </ul>
+      </section>
+
+      <div class="rodape-prancha">
+        <span>Tornearia Castro</span>
+        <span>Usinagem · Torno CNC · Solda · Retífica · Fresamento</span>
+        <span>Belo Horizonte — MG</span>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+</body>
+</html>
+

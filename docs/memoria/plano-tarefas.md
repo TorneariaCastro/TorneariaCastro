@@ -481,3 +481,196 @@ Se o upgrade quebrar algo (breaking change inesperado de patch, incomum mas poss
 Depois do patch commitado e da Fase 02.5 já commitada (ambas já estão em `dev`), Atlas segue o Protocolo de Backup e Merge padrão (tag `backup-pre-hml-*`, build/testes, aguardar confirmação explícita de Kleber) e promove **as duas coisas juntas** num único merge `dev → hml` — não há motivo pra gastar dois ciclos de backup/verificação em mudanças que já estão prontas ao mesmo tempo.
 
 Pendência que NÃO bloqueia esse merge: Kleber ainda não fez a checagem manual dos botões "Compartilhar orçamento" / "Converter em Serviço" (ver relatório da Ravena — ela não pôde testar essa parte por não digitar senha de login). Recomendação: fazer essa checagem já em `hml` depois do merge — é literalmente o ambiente feito pra isso.
+
+---
+---
+
+# Plano de Tarefas — FASE 02.6: VALOR FECHADO NO ORÇAMENTO
+
+## Contexto
+
+Spec da Shiva em `docs/memoria/projeto.md` (seção "Funcionalidade Adicional: Valor Fechado no Orçamento") e `docs/memoria/moscow.md` (adendo de 2026-09-10). Aprovada por Kleber, incluindo a decisão de o cliente ver as linhas do bloco Serviço mas **nunca** mão de obra e materiais.
+
+Origem: Kleber escreveu "Valor do serviço R$800,00" dentro do campo de descrição da OS-2026-0003 porque não existe onde lançar preço fechado. O total ficou R$ 0,00. Não é bug — é lacuna de produto.
+
+## Verificações feitas nesta sessão (não presumidas — protocolo de memória cética)
+
+O ponto crítico desta fase é que **o valor total da OS é recalculado em três lugares diferentes, cada um com sua própria cópia da fórmula**. Confirmado por leitura direta:
+
+| Onde | Arquivo / linha | Como calcula hoje |
+|---|---|---|
+| Helper oficial | `src/lib/types/ordem-servico.ts:51-61` | `calcularValorMaoDeObra` + `calcularValorMateriais` |
+| Página pública | `src/app/orcamento/[token]/page.tsx:69-74` | fórmula duplicada, inline |
+| Conta a receber | `src/app/(app)/ordens-servico/actions.ts:313-317` | fórmula duplicada, inline |
+
+Consumidores do helper (esses ficam certos de graça se o helper for corrigido):
+- `src/app/(app)/ordens-servico/[id]/page.tsx:69` — card "Valor total"
+- `src/app/(app)/ordens-servico/page.tsx:109` — coluna Valor da listagem
+- `src/app/(app)/clientes/[id]/page.tsx:136` — OS na ficha do cliente
+
+**Correção factual à spec da Shiva:** ela lista o Dashboard como impactado. Não é — `src/app/(app)/dashboard/page.tsx` usa `listOrdensServico()` apenas para a distribuição de status (`getStatusOsDistribuicao`); os valores do Dashboard vêm de `transacoes_financeiras`. Nenhuma alteração lá.
+
+**Sobre a NFS-e:** ela também não precisa de mudança direta. A nota é emitida a partir de uma transação **paga** do Financeiro, e o valor dessa transação vem da conta a receber gerada em `gerarContaAReceber`. Corrigindo a fórmula lá, a nota sai certa por consequência. Se ficasse de fora, a Prefeitura receberia um valor diferente do que apareceu na tela — que é exatamente o tipo de erro que só se descobre depois de emitida.
+
+Padrões já existentes a reaproveitar (não recriar):
+- Tabelas de itens: `itens_mao_de_obra` / `itens_materiais` (`supabase/migrations/0001_init.sql:30-45`) — `on delete cascade`, `numeric`, sem `created_at`.
+- RLS por papel: 4 políticas por tabela em `supabase/migrations/0002_roles.sql:30-38` — leitura para autenticado, escrita/atualização/exclusão só via `public.is_administrador()`.
+- Server Actions de item: `adicionarMaoDeObra` / `adicionarMaterial` / `removerItem` (`src/app/(app)/ordens-servico/actions.ts:157-237`) — checam `isAdmin`, convertem vírgula com `.replace(",", ".")`, chamam `garantirEdicaoPermitida` (trava pós-aprovação) e `revalidarOrdem`.
+- UI de lançamento: `src/app/(app)/ordens-servico/[id]/itens-lancamentos.tsx` — dois blocos idênticos em estrutura; o terceiro é cópia do bloco de Materiais.
+
+## Pré-condições
+- [ ] `git checkout dev && git pull origin dev`
+- [ ] Nenhuma credencial nova. Nenhum custo novo. Nenhuma dependência nova.
+
+---
+
+## PASSO 1 — Migration `supabase/migrations/0006_itens_servico.sql`
+
+```sql
+-- Preco fechado: o que o cliente compra, sem abrir a formacao de preco.
+-- Mesmo padrao de itens_materiais (quantidade x valor unitario).
+create table itens_servico (
+  id uuid primary key default gen_random_uuid(),
+  ordem_servico_id uuid not null references ordens_servico(id) on delete cascade,
+  descricao text not null,
+  quantidade numeric not null,
+  valor_unitario numeric not null
+);
+
+alter table itens_servico enable row level security;
+
+create policy "leitura_autenticados" on itens_servico for select to authenticated using (true);
+create policy "escrita_administrador" on itens_servico for insert to authenticated with check (public.is_administrador());
+create policy "atualizacao_administrador" on itens_servico for update to authenticated using (public.is_administrador()) with check (public.is_administrador());
+create policy "exclusao_administrador" on itens_servico for delete to authenticated using (public.is_administrador());
+```
+
+Sem coluna `unidade` — de propósito. Materiais precisam de unidade (kg, m, un) porque são medidos; serviço fechado é contado em peças. Um campo a menos para Kleber preencher no caso mais comum.
+
+**Aplicação:** Supabase MCP não está conectado nesta sessão. Mesmo caminho das migrations 0001–0005: Atlas entrega o SQL pronto e Kleber cola no SQL Editor do Supabase (conta `telascastroclaudia@gmail.com`). Atlas confirma depois via consulta REST real à tabela — **não** aceita "apliquei" como prova.
+
+---
+
+## PASSO 2 — Tipo e cálculo em `src/lib/types/ordem-servico.ts`
+
+```ts
+export interface ItemServico {
+  id: string;
+  descricao: string;
+  quantidade: number;
+  valorUnitario: number;
+}
+```
+
+- Adicionar `servicos: ItemServico[]` à interface `OrdemServico`.
+- Criar `calcularValorServicos(os: Pick<OrdemServico, "servicos">)` no mesmo formato dos outros dois.
+- **Alterar `calcularValorTotal`** para somar os três: `Pick<OrdemServico, "servicos" | "maoDeObra" | "materiais">`.
+
+O TypeScript vai apontar sozinho qualquer lugar que construa um `OrdemServico` sem o campo novo. Isso é proposital — é a rede de segurança contra esquecer um consumidor.
+
+Exportar `ItemServico` e `calcularValorServicos` no barrel `src/lib/types` (mesmo lugar de onde `ItemMaterial` já sai).
+
+---
+
+## PASSO 3 — Camada de dados em `src/lib/data/ordens-servico.ts`
+
+- `SELECT_ORDEM_SERVICO` (linha 63) passa a incluir `itens_servico(*)`.
+- `OrdemServicoRow` ganha `itens_servico: { id: string; descricao: string; quantidade: number; valor_unitario: number }[]`.
+- `toOrdemServico` mapeia `valor_unitario → valorUnitario`, igual já faz com materiais.
+
+As três funções do arquivo (`listOrdensServico`, `listOrdensServicoPorCliente`, `getOrdemServico`) usam a mesma constante — corrigir num lugar resolve os três.
+
+---
+
+## PASSO 4 — Server Actions em `src/app/(app)/ordens-servico/actions.ts`
+
+**4.1 — `adicionarServico(ordemServicoId, formData)`**
+
+Cópia estrutural de `adicionarMaterial` (linha 185), sem o campo `unidade`:
+- `isAdmin` obrigatório → `"Consultores não podem lançar valores."`
+- Campos: `descricao` (texto, obrigatório), `quantidade` e `valorUnitario` (`Number(String(...).replace(",", "."))`, ambos `> 0` e finitos)
+- Mensagens de erro: `"Descreva o serviço."` / `"Informe a quantidade."` / `"Informe o valor unitário."`
+- `garantirEdicaoPermitida` antes do insert — a trava pós-aprovação vale igual
+- `insert` em `itens_servico`, depois `revalidarOrdem(ordemServicoId)`
+
+**4.2 — `removerItem` (linha 215)**
+
+O parâmetro `tipo` hoje é `"mao_de_obra" | "material"`. Adicionar `"servico"` e mapear para a tabela `itens_servico`. Manter a checagem de `isAdmin` e `garantirEdicaoPermitida` como está.
+
+**4.3 — ⚠️ `gerarContaAReceber` (linha 292) — o ponto mais perigoso da fase**
+
+O `select` da linha 307 precisa passar a trazer `itens_servico(quantidade, valor_unitario)`, e a soma das linhas 315-317 precisa incluir esse terceiro termo.
+
+Se este passo for esquecido, o sistema mostra R$ 800,00 na tela e gera uma cobrança de R$ 0,00 — e como `valor <= 0` faz a função retornar sem criar nada (linha 319), a OS seria faturada **sem nenhuma conta a receber**, sem erro, sem aviso. A NFS-e viria junto no prejuízo, porque a nota nasce dessa transação.
+
+---
+
+## PASSO 5 — UI: bloco Serviço em `src/app/(app)/ordens-servico/[id]/itens-lancamentos.tsx`
+
+- Nova prop `servicos: ItemServico[]`, passada pela página (`page.tsx` linha 84-89: `servicos={os.servicos}`).
+- Novo bloco **acima** de "Mão de obra" (é o caminho mais comum — o que se usa mais vem primeiro). O bloco de Mão de obra ganha a borda superior (`border-t pt-6`) que hoje só o de Materiais tem.
+- Título: **Serviço**. Colunas: `Descrição · Qtd. · Valor unitário · Subtotal` (+ lixeira quando `podeEditar`).
+- Formulário: `grid gap-3 sm:grid-cols-[1fr_6rem_9rem_auto]`, `noValidate`, `ref` própria com `reset()` no sucesso, mesmo tratamento de `toast`/`setErro`.
+- Vazio: `"Nenhum serviço lançado."`
+- Placeholders: `Ex: Usinagem de bucha` · `1` · `800,00`.
+- Toast de sucesso: `"Serviço lançado."`
+
+**Melhoria pedida pela spec (Should Have, mas é uma linha):** acima dos três blocos, um texto curto explicando o que ficou implícito na tela e derrubou Kleber:
+
+> *Lance o preço fechado em **Serviço**, ou abra em **Mão de obra** e **Materiais**. Pode usar os dois. Os números em cinza são só exemplos — o valor total é a soma do que você lançar.*
+
+---
+
+## PASSO 6 — Página pública `src/app/orcamento/[token]/page.tsx` (mudança de comportamento + segurança)
+
+Esta é a parte que muda o que o cliente enxerga. **Não basta esconder na tela.**
+
+- No `select` da linha 24: **remover** `itens_mao_de_obra(...)` e `itens_materiais(...)`; **adicionar** `itens_servico(descricao, quantidade, valor_unitario)`.
+- Como o valor total precisa incluir mão de obra e materiais (que não podem ser enviados ao browser), fazer uma **segunda consulta no servidor** só para somar — traga os campos, calcule, e coloque apenas o número no objeto retornado por `buscarOrcamentoPorToken`. Os itens brutos não entram no retorno.
+  - Alternativa aceitável e mais limpa, se Atlas preferir: uma função `calcularTotalOrdemServico(supabase, ordemServicoId)` em `src/lib/data/ordens-servico.ts`, usada tanto aqui quanto em `gerarContaAReceber` — mata as duas cópias da fórmula de uma vez. **Preferir esta.**
+- Remover as duas `<Table>` de mão de obra e materiais (linhas 86-132). Colocar no lugar **uma** tabela com os itens de serviço: `Descrição · Qtd. · Valor` (valor = `quantidade × valor_unitario`), renderizada só quando houver itens.
+- O bloco "Valor total" (linhas 134-137) continua igual, agora lendo o total já calculado no servidor.
+- Interface `OrcamentoPublico`: trocar `maoDeObra`/`materiais` por `servicos` e `valorTotal`.
+
+**Critério de verificação (Kerberos vai checar isso):** abrir o HTML servido da página pública de uma OS que tenha mão de obra lançada e confirmar que **nenhuma** hora, valor/hora ou material aparece no payload — nem no HTML, nem no payload de hidratação do React. Esconder com CSS ou `hidden` é reprovado.
+
+---
+
+## PASSO 7 — Manual do sistema
+
+`docs/manual-do-sistema.html`, seção **05 — "Lançar os valores"** (a partir da linha ~976):
+- Acrescentar o bloco **Serviço** no roteiro, antes de Mão de obra, com o exemplo de lote (`5 buchas × R$ 160,00`).
+- Aviso novo, no padrão `<div class="nota">` já usado no arquivo: os números em cinza dentro dos campos são **exemplos**, não valores preenchidos.
+- Nota de que **vírgula funciona** (`120,50`) — verificado em `actions.ts`, o sistema converte.
+- Na seção que descreve o link do cliente: o cliente vê a descrição, as linhas de **Serviço** e o total — mão de obra e materiais são internos.
+- O `.pdf` é gerado a partir do `.html`; se Atlas não tiver como regerar sem instalar nada, deixar o `.pdf` desatualizado e **reportar**, não improvisar ferramenta nova.
+
+**Versionar os dois arquivos** (`docs/manual-do-sistema.html` e `.pdf`) — hoje estão como untracked no `git status`, fora do histórico. Commit separado, mensagem `docs: versiona manual do sistema`.
+
+---
+
+## Critério de Aceitação
+
+- [ ] `npm run build` e `npx tsc --noEmit` limpos
+- [ ] Migration aplicada por Kleber e **confirmada por consulta real** à tabela `itens_servico` (não por relato)
+- [ ] Numa OS de teste: lançar `Bucha · 5 · 160,00` → tabela mostra subtotal R$ 800,00 e o card "Valor total" mostra R$ 800,00
+- [ ] Lançar também `Aço 1045 · 2 un · 60,00` em Materiais → total vira R$ 920,00 (os blocos somam juntos, não se excluem)
+- [ ] Coluna Valor na listagem de OS e na ficha do cliente mostram R$ 920,00 — o mesmo número
+- [ ] Página pública dessa OS: mostra a linha `Bucha · 5 · R$ 800,00` e o total R$ 920,00; **não** mostra nada de mão de obra nem materiais, e esses dados **não estão** no HTML servido
+- [ ] Levar a OS até **Faturado** → conta a receber criada no Financeiro com **R$ 920,00** (este é o teste que prova o Passo 4.3)
+- [ ] Com o cliente tendo aprovado (`aprovado_em` preenchido), os três formulários de lançamento somem — inclusive o novo
+- [ ] Dados de teste removidos do banco ao final e a OS usada restaurada ao estado original
+
+## Em caso de erro
+Parar e reportar a Hades com o output completo do terminal — sem resumir, sem contornar. Regra das 2 tentativas vale.
+
+## Relatório obrigatório ao concluir
+- **STATUS**: sucesso / erro
+- **STEPS EXECUTADOS**: lista numerada
+- **OUTPUT DO TERMINAL**: `npm run build`, `npx tsc --noEmit`, comandos git — sem resumir
+- **ESTADO ATUAL**: `git status` + `git log --oneline -3`
+- **ERROS ENCONTRADOS**: mensagem exata, se houver
+- **EVIDÊNCIA DO CRITÉRIO DE ACEITAÇÃO**: como cada item foi verificado — especialmente o valor da conta a receber e a ausência de mão de obra no HTML público
+
+## GitFlow
+Atlas trabalha em `dev`. Commits separados: (1) feature, (2) manual. Nada de merge para `hml` ou `main` sem aprovação explícita de Kleber + backup por tag.

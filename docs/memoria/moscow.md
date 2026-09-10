@@ -39,3 +39,28 @@ _Nenhum item adiado nesta rodada._
 ### 📦 WON'T HAVE (por agora)
 - [ ] Envio automático via WhatsApp Business API (custo mensal + aprovação Meta)
 - [ ] Assinatura digital com validade jurídica formal
+
+---
+
+## Adendo — Valor Fechado no Orçamento (2026-09-10)
+
+> Feature nascida de um tropeço real de uso: Kleber escreveu o preço na descrição porque não havia onde lançar valor fechado. Spec completa em `projeto.md`.
+
+### 📦 MUST HAVE
+- [ ] Bloco **Serviço** (Descrição · Qtd. · Valor unitário) na seção "Valores do serviço", acima de Mão de obra e Materiais
+- [ ] Valor total somando os três blocos em **todos** os lugares onde aparece: tela da OS, listagem, Dashboard, página pública, conta a receber ao faturar, e NFS-e
+- [ ] Mesmas travas dos blocos existentes: só administrador lança, e valores congelam após aprovação do cliente
+- [ ] Página pública do orçamento passa a mostrar **descrição do serviço + linhas do bloco Serviço + valor total** — sem mão de obra, sem horas, sem valor/hora, sem materiais (decisão de Kleber: mostrar o que o cliente compra, esconder como o preço foi formado)
+- [ ] Mão de obra e materiais param de ser **buscados do banco** na rota pública, não só escondidos da tela; valor total calculado no servidor (nota do Kerberos)
+
+### 📦 SHOULD HAVE
+- [ ] Manual do sistema atualizado numa passada só: bloco novo + aviso de que os números cinzas dos campos são exemplos, não valores preenchidos + nota de que vírgula funciona (`120,50`)
+- [ ] Manual (`docs/manual-do-sistema.html` / `.pdf`) versionado no git — hoje está solto na pasta, fora do histórico
+
+### 📦 COULD HAVE
+_Nenhum item nesta caixa — a exibição das linhas do bloco Serviço ao cliente foi promovida a Must Have por decisão de Kleber em 2026-09-10._
+
+### 📦 WON'T HAVE (por agora)
+- [ ] Escolher no compartilhamento entre "enviar detalhado" e "enviar só o total"
+- [ ] Desconto / acréscimo sobre o valor total
+- [ ] Tabela de preços padrão ou catálogo de peças recorrentes
