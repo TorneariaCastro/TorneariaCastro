@@ -127,8 +127,12 @@ Migration aplicada e verificada em 2026-08-26. Usuário `eusoukleberpereira@gmai
 ---
 
 ### 🟣 FASE 02.6: VALOR FECHADO NO ORÇAMENTO
-**Status:** `🔄 Pronta em `dev`, aguardando QA + auditoria` (código verificado em execução real; ainda NÃO está em produção)
-**Progresso:** 7/7 tarefas (100%) — commits `a41437c` e `4f26c3a` em `dev`
+**Status:** `🔄 Pronta em `dev`, aprovada por Ravena + Kerberos, aguardando promoção` (ainda NÃO está em produção)
+**Progresso:** 7/7 tarefas (100%) — commits `a41437c`, `4f26c3a`, `c07e08e` em `dev`
+
+**Auditoria Kerberos (2026-09-10) — APROVADO 🛡️.** Pentest real com a chave pública contra a tabela nova `itens_servico`: leitura devolveu `[]` com linhas existindo, insert rejeitado (`42501`), update/delete afetaram zero linhas (RLS via USING). Ataque de vazamento na rota pública `/orcamento/[token]` sem login, com a palavra "MARGEM_SECRETA" e a taxa horária R$ 90 plantadas em mão de obra: **nenhum vaza** — nem no HTML nem no payload de hidratação; só a linha agregada legítima ("Execução do serviço") e o total aparecem. Confirmado que o valor unitário do bloco Serviço trafega (é o que o cliente compra), mas horas/valor-hora/materiais não. IDOR de token: 404 em token inválido/lixo. Rotas protegidas: 307 → /login sem sessão. CVE-2025-29927 (middleware bypass): imune (Next 16.3.4, header malicioso ainda redireciona pra login). Headers HTTP na rota pública: X-Frame-Options DENY, CSP com frame-ancestors none, nosniff, Referrer-Policy, Permissions-Policy — X-Powered-By não vaza. Server Actions públicas (aprovar/recusar) idempotentes, token UUID parametrizado, sem injeção. Diff cirúrgico — só toca os arquivos da fase. Dados de pentest removidos, banco restaurado.
+
+**Achado não-bloqueante (fora do escopo da fase):** `npm audit` acusa 2 vulnerabilidades (js-yaml high, hono moderate), ambas **transitivas e de dependências de desenvolvimento** (eslint, shadcn) — não vão para o bundle de produção. Recomendação: `npm audit fix` quando conveniente, sem urgência. Não bloqueia o deploy desta fase.
 **Objetivo:** Permitir lançar preço fechado (`Bucha de bronze · 5 · R$ 160,00`) sem abrir horas — hoje o sistema só sabe formar preço por mão de obra e materiais. E fechar a página pública: o cliente passa a ver o que compra, nunca como o preço foi formado.
 **Por que agora?** Kleber tropeçou nisso usando o sistema de verdade — escreveu "Valor do serviço R$800,00" dentro do campo de descrição da OS-2026-0003 porque não havia onde lançar. O total ficou R$ 0,00. Lacuna de produto, não bug.
 
